@@ -92,6 +92,7 @@ services:
       - DB_HOST=db 
     expose:
       - "8000"
+    command: sh -c "npm run migration:run && node --enable-source-maps dist/main.js"
     depends_on:
       db:
         condition: service_healthy
