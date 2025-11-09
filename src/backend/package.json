@@ -16,6 +16,7 @@
     "typeorm:migration:generate": "npm run build && node --enable-source-maps -r ts-node/register -r tsconfig-paths/register -e \"require('./ormconfig.ts').default.runMigrations\"",
     "migration:generate": "npm run build && ts-node -r tsconfig-paths/register -e \"require('./ormconfig.ts').default.showMigrations\"",
     "migration:run": "npm run build && ts-node -r tsconfig-paths/register -e \"require('./ormconfig.ts').default.runMigrations()\"",
+    "migration:run:prod": "node -e \"const { DataSource } = require('typeorm'); const config = require('./dist/config/configuration').default(); const ds = new DataSource({ type: 'postgres', host: config.database.host, port: config.database.port, username: config.database.username, password: config.database.password, database: config.database.database, entities: ['dist/**/*.entity.js'], migrations: ['dist/migrations/*.js'], logging: config.database.logging }); ds.initialize().then(() => ds.runMigrations().then(() => { console.log('✅ Migrations completed'); ds.destroy(); }).catch(err => { console.error('❌ Migration error:', err.message); ds.destroy(); process.exit(1); })).catch(err => { console.error('❌ Connection error:', err.message); process.exit(1); });\"",
     "migration:revert": "npm run build && ts-node -r tsconfig-paths/register -e \"require('./ormconfig.ts').default.undoLastMigration()\"",
     "setup:practice": "ts-node -r tsconfig-paths/register src/scripts/setup-practice-data.ts",
     "test:practice-api": "ts-node -r tsconfig-paths/register src/scripts/test-practice-api.ts",

@@ -92,6 +92,8 @@ services:
       - DB_HOST=db 
     expose:
       - "8000"
+    # Run migrations automatically before starting app
+    command: sh -c "npm run migration:run:prod && node --enable-source-maps dist/main.js"
     depends_on:
       db:
         condition: service_healthy
