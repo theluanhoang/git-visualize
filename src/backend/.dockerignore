@@ -1,0 +1,121 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnpm-store
+.pnp.*
+
+# Build outputs
+dist
+*.tsbuildinfo
+*.js.map
+build
+out
+
+# Testing
+coverage
+.nyc_output
+test
+tests
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+__tests__
+__mocks__
+*.e2e-spec.ts
+*.e2e-spec.js
+jest.config.*
+jest-e2e.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.production
+.env.test
+
+# IDE and editors
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Git
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.github
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+.docker
+
+# Documentation
+*.md
+!README.md
+docs
+CHANGELOG*
+LICENSE*
+CONTRIBUTING*
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+.circleci
+Jenkinsfile
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Misc
+.eslintcache
+.editorconfig
+.prettierrc*
+.prettierignore
+.eslintrc*
+.eslintignore
+.npmrc
+.yarnrc
+.yarn-integrity
+
+# Performance tests
+performance-tests
+
+# Scripts (not needed in production)
+scripts
+!scripts/**/*.js
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp

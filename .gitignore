@@ -1,0 +1,97 @@
+# =============================================================================
+# Monorepo Root .gitignore
+# =============================================================================
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Git (keep subdirectory .git if needed for migration)
+# Uncomment if you want to remove subdirectory repos:
+# src/backend/.git/
+# src/frontend/.git/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Coverage and testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Misc
+.eslintcache
+.editorconfig
+.prettierrc*
+.prettierignore
+.npmrc
+.yarnrc
+.yarn-integrity
+
+# Documentation builds
+docs/_build/
+site/
+
+# Local development
+.local/
+.cache/
+

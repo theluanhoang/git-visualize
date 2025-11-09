@@ -1,0 +1,46 @@
+config:
+  target: 'http://localhost:8000'
+  phases:
+    # Sudden spike
+    - duration: 60
+      arrivalRate: 100
+      name: "Sudden spike"
+  
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+  
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+  
+  variables:
+    baseUrl: 'http://localhost:8000'
+    apiPrefix: '/api/v1'
+
+scenarios:
+  - name: "Spike Test - High Load"
+    flow:
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/lesson?page=1&limit=20"
+          expect:
+            - statusCode: 200
+      
+      - think: 0.5
+      
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/practices?page=1&limit=20"
+          expect:
+            - statusCode: 200
+      
+      - think: 0.5
+      
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/git/execute"
+          json:
+            command: "git status"
+            repositoryState: null
+          expect:
+            - statusCode: 200
+
+

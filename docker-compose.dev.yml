@@ -1,0 +1,238 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    container_name: gv_db_dev
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_DB: ${DB_NAME:-git_visualize}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+    networks:
+      - app-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin4_dev
+    restart: unless-stopped
+    ports:
+      - "${PGADMIN_PORT:-8888}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@gmail.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+      target: deps-dev
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        GIT_COMMIT: ${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')}
+        IMAGE_VERSION: ${IMAGE_VERSION:-dev}
+    container_name: gv_backend_dev
+    restart: unless-stopped
+    env_file:
+      - ./src/backend/.env.development
+    environment:
+      - DB_HOST=db
+      - FRONTEND_URL=http://frontend:3000
+      - NODE_ENV=development
+    volumes:
+      - ./src/backend/src:/app/src:rw
+      - ./src/backend/tsconfig.json:/app/tsconfig.json:ro
+      - ./src/backend/tsconfig.build.json:/app/tsconfig.build.json:ro
+      - ./src/backend/nest-cli.json:/app/nest-cli.json:ro
+      - ./src/backend/ormconfig.ts:/app/ormconfig.ts:ro
+      - /app/node_modules
+    command: ["sh", "-c", "nest start --watch"]
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:8000/docs', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1));\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "development,backend"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+      target: deps-dev
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        GIT_COMMIT: ${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')}
+        IMAGE_VERSION: ${IMAGE_VERSION:-dev}
+    container_name: gv_frontend_dev
+    restart: unless-stopped
+    env_file:
+      - ./src/frontend/.env.development
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./src/frontend/src:/app/src:rw
+      - ./src/frontend/public:/app/public:ro
+      - ./src/frontend/messages:/app/messages:ro
+      - ./src/frontend/next.config.ts:/app/next.config.ts:ro
+      - ./src/frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./src/frontend/components.json:/app/components.json:ro
+      - ./src/frontend/postcss.config.mjs:/app/postcss.config.mjs:ro
+      - ./src/frontend/eslint.config.mjs:/app/eslint.config.mjs:ro
+      - /app/node_modules
+      - /app/.next
+    command: ["sh", "-c", "npm run dev"]
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "development,frontend"
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: gv_nginx_dev
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'nginx: master process' > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+        labels: "development,nginx"
+    networks:
+      - app-network
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+
+volumes:
+  postgres-data:
+    name: git-visulize-postgres-dev
+    driver: local
+  pgadmin-data:
+    name: git-visulize-pgadmin-dev
+    driver: local
+  nginx-logs:
+    name: git-visulize-nginx-logs-dev
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: br-gv-dev
+      com.docker.network.driver.mtu: 1500

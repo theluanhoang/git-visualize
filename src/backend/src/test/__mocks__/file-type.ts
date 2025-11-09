@@ -1,0 +1,1 @@
+export const fileTypeFromBuffer = async (_buf: Buffer) => ({ mime: 'text/plain' });

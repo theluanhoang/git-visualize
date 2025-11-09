@@ -1,0 +1,15 @@
+# SSL certificates - DO NOT COMMIT
+ssl/
+*.pem
+*.key
+*.crt
+*.cert
+
+# Logs
+*.log
+
+# Local overrides
+*.local
+ssl.conf
+
+

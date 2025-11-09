@@ -1,0 +1,175 @@
+config:
+  target: 'http://localhost:8000'
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 2
+      name: "Warm up"
+    
+    # Normal load
+    - duration: 120
+      arrivalRate: 10
+      name: "Normal load"
+    
+    # Spike test
+    - duration: 60
+      arrivalRate: 50
+      name: "Spike test"
+    
+    # Sustained load
+    - duration: 180
+      arrivalRate: 20
+      name: "Sustained load"
+    
+    # Cool down
+    - duration: 30
+      arrivalRate: 5
+      name: "Cool down"
+  
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+  
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+  # Variables for dynamic data
+  variables:
+    baseUrl: 'http://localhost:8000'
+    apiPrefix: '/api/v1'
+
+scenarios:
+  # Auth flow scenario
+  - name: "Authentication Flow"
+    weight: 30
+    flow:
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/auth/register"
+          json:
+            email: "test-{{ $randomString() }}@example.com"
+            password: "Test123!@#"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+      
+      - think: 1
+      
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/auth/login"
+          json:
+            email: "test@example.com"
+            password: "test123"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      
+      - think: 1
+      
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/auth/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+  # Lessons browsing scenario
+  - name: "Lessons Browsing"
+    weight: 40
+    flow:
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/lesson?page=1&limit=20"
+          expect:
+            - statusCode: 200
+            - contentType: json
+          capture:
+            - json: "$.data[0].id"
+              as: "lessonId"
+      
+      - think: 2
+      
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/lesson/{{ lessonId }}/view-stats"
+          expect:
+            - statusCode: 200
+      
+      - think: 1
+      
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/lesson/{{ lessonId }}/rating/stats"
+          expect:
+            - statusCode: 200
+
+  # Practice scenario
+  - name: "Practice Flow"
+    weight: 20
+    flow:
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/auth/login"
+          json:
+            email: "test@example.com"
+            password: "test123"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+      
+      - think: 1
+      
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/practices?page=1&limit=20"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.data[0].id"
+              as: "practiceId"
+      
+      - think: 2
+      
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/practices/{{ practiceId }}/view"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 204
+      
+      - think: 1
+      
+      - get:
+          url: "{{ baseUrl }}{{ apiPrefix }}/practices/{{ practiceId }}/repository-state"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: [200, 404]
+
+  # Git Engine scenario
+  - name: "Git Engine Usage"
+    weight: 10
+    flow:
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/git/execute"
+          json:
+            command: "git status"
+            repositoryState: null
+          expect:
+            - statusCode: 200
+            - contentType: json
+      
+      - think: 1
+      
+      - post:
+          url: "{{ baseUrl }}{{ apiPrefix }}/git/execute"
+          json:
+            command: "git init"
+            repositoryState: null
+          expect:
+            - statusCode: 200
+
+

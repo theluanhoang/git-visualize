@@ -1,0 +1,299 @@
+{
+  "lesson": {
+    "id": "uuid-here",
+    "title": "Git Fundamentals: Complete Guide",
+    "slug": "git-fundamentals-complete-guide",
+    "description": "Master the essential Git concepts and commands from scratch. Learn version control, branching, merging, and collaboration workflows.",
+    "content": "# Git Fundamentals: Complete Guide\n\n## What is Git?\n\nGit is a distributed version control system that tracks changes in files and coordinates work among multiple people. It was created by Linus Torvalds in 2005 for Linux kernel development.\n\n## Why Use Git?\n\n- **Version Control**: Track changes to your code over time\n- **Collaboration**: Work with multiple developers on the same project\n- **Backup**: Keep multiple copies of your work\n- **Branching**: Work on different features simultaneously\n- **History**: See what changed, when, and why\n\n## Key Concepts\n\n### Repository\nA repository (repo) is a collection of files and their complete history. It contains:\n- All your project files\n- Complete change history\n- Branch information\n- Remote connections\n\n### Commit\nA commit is a snapshot of your files at a specific point in time. Each commit has:\n- A unique ID (hash)\n- A commit message\n- Author and timestamp\n- Parent commit(s)\n\n### Branch\nA branch is a parallel version of your code. The main branch is usually called \"main\" or \"master\".\n\n### Working Directory\nThe folder on your computer where you're working on your project.\n\n### Staging Area\nA temporary area where you prepare changes before committing them.\n\n## Basic Git Workflow\n\n1. **Initialize** a repository\n2. **Add** files to staging\n3. **Commit** changes\n4. **Push** to remote repository\n\n## Essential Commands\n\n### Repository Management\n- `git init` - Initialize a new repository\n- `git clone <url>` - Copy an existing repository\n- `git status` - Check repository status\n\n### File Management\n- `git add <file>` - Stage a file\n- `git add .` - Stage all changes\n- `git commit -m \"message\"` - Commit changes\n- `git diff` - Show changes\n\n### Branching\n- `git branch` - List branches\n- `git branch <name>` - Create a branch\n- `git checkout <branch>` - Switch to branch\n- `git merge <branch>` - Merge branches\n\n### Remote Operations\n- `git push` - Upload changes\n- `git pull` - Download changes\n- `git fetch` - Download without merging\n\n## Best Practices\n\n1. **Commit Often**: Make small, frequent commits\n2. **Write Good Messages**: Be descriptive and clear\n3. **Use Branches**: Keep main branch stable\n4. **Review Changes**: Check what you're committing\n5. **Backup Regularly**: Push to remote repositories\n\n## Common Workflows\n\n### Feature Development\n1. Create a feature branch\n2. Make changes\n3. Commit frequently\n4. Push to remote\n5. Create pull request\n6. Merge after review\n\n### Bug Fixing\n1. Create a hotfix branch\n2. Fix the issue\n3. Test thoroughly\n4. Merge to main\n5. Deploy immediately\n\n## Next Steps\n\nAfter learning these fundamentals, you'll be ready to:\n- Work with remote repositories\n- Collaborate with teams\n- Use advanced Git features\n- Implement Git workflows\n\nRemember: Git is a powerful tool that takes time to master. Start with the basics and gradually learn more advanced features.",
+    "status": "PUBLISHED",
+    "views": 0,
+    "createdAt": "2024-01-15T10:00:00.000Z",
+    "updatedAt": "2024-01-15T10:00:00.000Z"
+  },
+  "practice": {
+    "id": "practice-uuid-here",
+    "lessonId": "uuid-here",
+    "title": "Git Repository Setup and First Commit",
+    "scenario": "You are starting a new project and need to set up version control. Create a new Git repository, add your project files, and make your first commit with a proper message.",
+    "difficulty": 1,
+    "estimatedTime": 15,
+    "isActive": true,
+    "order": 1,
+    "views": 0,
+    "completions": 0,
+    "createdAt": "2024-01-15T10:00:00.000Z",
+    "updatedAt": "2024-01-15T10:00:00.000Z",
+    "instructions": [
+      {
+        "id": "instruction-1",
+        "practiceId": "practice-uuid-here",
+        "content": "Create a new directory for your project",
+        "order": 1,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-2",
+        "practiceId": "practice-uuid-here",
+        "content": "Navigate into the project directory",
+        "order": 2,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-3",
+        "practiceId": "practice-uuid-here",
+        "content": "Initialize a new Git repository",
+        "order": 3,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-4",
+        "practiceId": "practice-uuid-here",
+        "content": "Create a README.md file with project description",
+        "order": 4,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-5",
+        "practiceId": "practice-uuid-here",
+        "content": "Check the status of your repository",
+        "order": 5,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-6",
+        "practiceId": "practice-uuid-here",
+        "content": "Add the README file to the staging area",
+        "order": 6,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-7",
+        "practiceId": "practice-uuid-here",
+        "content": "Make your first commit with a descriptive message",
+        "order": 7,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "instruction-8",
+        "practiceId": "practice-uuid-here",
+        "content": "Verify your commit was created successfully",
+        "order": 8,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      }
+    ],
+    "hints": [
+      {
+        "id": "hint-1",
+        "practiceId": "practice-uuid-here",
+        "content": "Use mkdir command to create a directory",
+        "order": 1,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-2",
+        "practiceId": "practice-uuid-here",
+        "content": "Use cd command to navigate into directories",
+        "order": 2,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-3",
+        "practiceId": "practice-uuid-here",
+        "content": "Use git init to initialize a new repository",
+        "order": 3,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-4",
+        "practiceId": "practice-uuid-here",
+        "content": "Use echo command to create simple text files",
+        "order": 4,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-5",
+        "practiceId": "practice-uuid-here",
+        "content": "Use git status to check repository state",
+        "order": 5,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-6",
+        "practiceId": "practice-uuid-here",
+        "content": "Use git add to stage files for commit",
+        "order": 6,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-7",
+        "practiceId": "practice-uuid-here",
+        "content": "Use git commit -m \"message\" to commit changes",
+        "order": 7,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "hint-8",
+        "practiceId": "practice-uuid-here",
+        "content": "Use git log to view commit history",
+        "order": 8,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      }
+    ],
+    "expectedCommands": [
+      {
+        "id": "command-1",
+        "practiceId": "practice-uuid-here",
+        "command": "mkdir my-git-project",
+        "order": 1,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-2",
+        "practiceId": "practice-uuid-here",
+        "command": "cd my-git-project",
+        "order": 2,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-3",
+        "practiceId": "practice-uuid-here",
+        "command": "git init",
+        "order": 3,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-4",
+        "practiceId": "practice-uuid-here",
+        "command": "echo \"# My Git Project\" > README.md",
+        "order": 4,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-5",
+        "practiceId": "practice-uuid-here",
+        "command": "git status",
+        "order": 5,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-6",
+        "practiceId": "practice-uuid-here",
+        "command": "git add README.md",
+        "order": 6,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-7",
+        "practiceId": "practice-uuid-here",
+        "command": "git commit -m \"Initial commit: Add README\"",
+        "order": 7,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "command-8",
+        "practiceId": "practice-uuid-here",
+        "command": "git log --oneline",
+        "order": 8,
+        "isRequired": true,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      }
+    ],
+    "validationRules": [
+      {
+        "id": "validation-1",
+        "practiceId": "practice-uuid-here",
+        "type": "min_commands",
+        "value": "6",
+        "message": "You need to execute at least 6 commands to complete this practice",
+        "order": 1,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "validation-2",
+        "practiceId": "practice-uuid-here",
+        "type": "required_commands",
+        "value": "git init,git add,git commit",
+        "message": "You must use git init, git add, and git commit commands",
+        "order": 2,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "validation-3",
+        "practiceId": "practice-uuid-here",
+        "type": "commit_count",
+        "value": "1",
+        "message": "You must create exactly 1 commit",
+        "order": 3,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      }
+    ],
+    "tags": [
+      {
+        "id": "tag-1",
+        "practiceId": "practice-uuid-here",
+        "name": "git-basics",
+        "color": "#2196F3",
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "tag-2",
+        "practiceId": "practice-uuid-here",
+        "name": "beginner",
+        "color": "#4CAF50",
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "tag-3",
+        "practiceId": "practice-uuid-here",
+        "name": "repository-setup",
+        "color": "#FF9800",
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "tag-4",
+        "practiceId": "practice-uuid-here",
+        "name": "first-commit",
+        "color": "#9C27B0",
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z"
+      }
+    ]
+  }
+}
