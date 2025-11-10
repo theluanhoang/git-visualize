@@ -137,7 +137,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d/server-vercel.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/conf.d/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - ./nginx/conf.d/ssl.conf:/etc/nginx/ssl.conf:ro
       - /var/www/acme:/var/www/acme:ro
       - ${NGINX_CERTS_HOST_PATH:-/etc/letsencrypt/live/your-domain}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
       - ${NGINX_CERTS_HOST_PATH:-/etc/letsencrypt/live/your-domain}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
