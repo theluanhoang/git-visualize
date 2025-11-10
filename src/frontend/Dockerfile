@@ -85,8 +85,12 @@ FROM deps-dev AS builder
 COPY --chown=nextjs:nodejs .env.production* .env.development* ./
 
 # Set build-time environment variables
+# Memory limit: 4096 for normal, 1536 for EC2 free tier
+# Can be overridden via build arg: --build-arg NODE_OPTIONS="--max-old-space-size=1536"
+ARG NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    NODE_ENV=production
+    NODE_ENV=production \
+    NODE_OPTIONS=${NODE_OPTIONS}
 
 # Copy build configuration files, source code, and assets
 COPY --chown=nextjs:nodejs next.config.ts tsconfig.json postcss.config.mjs tailwind.config.* components.json ./
@@ -97,18 +101,24 @@ COPY --chown=nextjs:nodejs messages ./messages
 # Build Next.js application with standalone output
 # Load environment variables from env file if it exists
 # Priority: .env.production > .env.development
-RUN if [ -f .env.production ]; then \
+# Add progress output and error handling
+RUN echo "Starting Next.js build..." && \
+    if [ -f .env.production ]; then \
+        echo "Loading .env.production..." && \
         set -a && \
         . .env.production && \
         set +a; \
     elif [ -f .env.development ]; then \
+        echo "Loading .env.development..." && \
         set -a && \
         . .env.development && \
         set +a; \
     fi && \
-    npx next build || \
-    node node_modules/next/dist/bin/next build && \
-    chown -R nextjs:nodejs /app/.next
+    echo "Building Next.js application..." && \
+    (npx next build 2>&1 || node node_modules/next/dist/bin/next build 2>&1) && \
+    echo "Build completed, setting permissions..." && \
+    chown -R nextjs:nodejs /app/.next && \
+    echo "Build finished successfully"
 
 # =============================================================================
 # Stage 5: Production runtime (minimal)
