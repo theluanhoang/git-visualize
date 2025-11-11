@@ -188,7 +188,15 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d/upstream.conf:/etc/nginx/conf.d/upstream.conf:ro
       - ./nginx/conf.d/server.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/conf.d/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
       - nginx-logs:/var/log/nginx
+      - /var/www/acme:/var/www/acme:ro
+      # SSL certificates - configure paths based on your certificate location
+      # Example for Let's Encrypt with acme.sh:
+      # - ${NGINX_CERTS_HOST_PATH:-/path/to/certs}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
+      # - ${NGINX_CERTS_HOST_PATH:-/path/to/certs}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
+      # Or mount entire certs directory:
+      - ${NGINX_CERTS_DIR:-./nginx/certs}:/etc/nginx/certs:ro
     depends_on:
       backend:
         condition: service_healthy

@@ -136,7 +136,9 @@ services:
       - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/upstream-vercel.conf:/etc/nginx/conf.d/upstream.conf:ro
       - ./nginx/conf.d/server-vercel.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/conf.d/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
       - /var/www/acme:/var/www/acme:ro
       - ${NGINX_CERTS_HOST_PATH:-/home/ec2-user/.acme.sh/54.66.187.81.sslip.io_ecc}/fullchain.cer:/etc/nginx/certs/fullchain.pem:ro
       - ${NGINX_CERTS_HOST_PATH:-/home/ec2-user/.acme.sh/54.66.187.81.sslip.io_ecc}/${CERT_KEY_FILE:-54.66.187.81.sslip.io.key}:/etc/nginx/certs/privkey.pem:ro
