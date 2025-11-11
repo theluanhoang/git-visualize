@@ -20,7 +20,30 @@ function setCookie(name: string, value: string, maxAge: number = COOKIE_CONFIG.m
 
 function removeCookie(name: string): void {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${COOKIE_CONFIG.path};`;
+  
+  const baseAttributes = `path=${COOKIE_CONFIG.path}; SameSite=${COOKIE_CONFIG.sameSite}${COOKIE_CONFIG.secure ? '; Secure' : ''}`;
+  const expiredDate = 'Thu, 01 Jan 1970 00:00:00 UTC';
+  
+  document.cookie = `${name}=; expires=${expiredDate}; ${baseAttributes}`;
+  
+  document.cookie = `${name}=; max-age=0; ${baseAttributes}`;
+  
+  document.cookie = `${name}=; expires=${expiredDate}; path=${COOKIE_CONFIG.path}`;
+  
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes('.') && !hostname.startsWith('localhost')) {
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        const parentDomain = '.' + parts.slice(-2).join('.');
+        document.cookie = `${name}=; expires=${expiredDate}; path=${COOKIE_CONFIG.path}; domain=${parentDomain}; SameSite=${COOKIE_CONFIG.sameSite}${COOKIE_CONFIG.secure ? '; Secure' : ''}`;
+        document.cookie = `${name}=; max-age=0; path=${COOKIE_CONFIG.path}; domain=${parentDomain}; SameSite=${COOKIE_CONFIG.sameSite}${COOKIE_CONFIG.secure ? '; Secure' : ''}`;
+      }
+    }
+    
+    document.cookie = `${name}=; expires=${expiredDate}; path=${COOKIE_CONFIG.path}; SameSite=${COOKIE_CONFIG.sameSite}${COOKIE_CONFIG.secure ? '; Secure' : ''}`;
+  }
 }
 
 export function syncAuthToCookies(tokens: AuthTokens, user: AuthUser): void {
