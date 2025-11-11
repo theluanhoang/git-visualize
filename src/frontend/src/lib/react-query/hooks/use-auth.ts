@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { authKeys } from '@/lib/react-query/query-keys'
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import api, { clearAuthState, tokenUtils } from '@/lib/api/axios'
 import { authApi, authStorage, AuthUser } from '@/services/auth'
+import { getLocaleFromPath } from '@/lib/middleware/utils'
 
 export const useCurrentUser = () => {
   const queryClient = useQueryClient()
@@ -80,6 +81,20 @@ export const useRegister = () => {
 export const useLogout = () => {
   const qc = useQueryClient()
   const router = useRouter()
+  const params = useParams()
+  
+  const getCurrentLocale = (): string => {
+    if (params?.locale && typeof params.locale === 'string') {
+      return params.locale
+    }
+    
+    if (typeof window !== 'undefined') {
+      const locale = getLocaleFromPath(window.location.pathname)
+      return locale || 'vi'
+    }
+    
+    return 'vi'
+  }
   
   return useMutation({
     mutationFn: async () => {
@@ -90,18 +105,25 @@ export const useLogout = () => {
       }
     },
     onSuccess: () => {
+      const locale = getCurrentLocale()
+      
+      authStorage.clear()
       clearAuthState()
       qc.setQueryData(authKeys.user(), null)
       qc.removeQueries({ queryKey: authKeys.all, exact: false })
       qc.clear()
       
-      router.replace('/')
+      router.replace(`/${locale}/auth/login`)
     },
     onError: () => {
+      const locale = getCurrentLocale()
+      
+      authStorage.clear()
       clearAuthState()
       qc.setQueryData(authKeys.user(), null)
       qc.removeQueries({ queryKey: authKeys.all, exact: false })
-      router.replace('/')
+      
+      router.replace(`/${locale}/auth/login`)
     }
   })
 }
