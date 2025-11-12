@@ -1,0 +1,202 @@
+name: CI/CD Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.github/**'
+
+env:
+  DOCKER_IMAGE_NAME: git-visualize-engine-backend
+  DOCKER_COMPOSE_FILE: docker-compose.vercel.yml
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+
+      - name: Log in to Docker Hub (if needed)
+        if: env.DOCKER_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        if: secrets.DOCKER_USERNAME != ''
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set image tag
+        id: image-tag
+        run: |
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
+            echo "tags=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+            echo "labels=${{ steps.meta.outputs.labels }}" >> $GITHUB_OUTPUT
+          else
+            echo "tags=${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "labels=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src/backend
+          file: ./src/backend/Dockerfile
+          push: ${{ secrets.DOCKER_USERNAME != '' }}
+          tags: ${{ steps.image-tag.outputs.tags }}
+          labels: ${{ steps.image-tag.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            GIT_COMMIT=${{ github.sha }}
+            IMAGE_VERSION=${{ github.sha }}
+
+      - name: Prepare deployment
+        run: |
+          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+          echo "GIT_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy/src/backend
+          cp ${{ env.DOCKER_COMPOSE_FILE }} deploy/
+          cp -r nginx deploy/ || true
+          echo "Deployment package created"
+
+      - name: Create backend env file
+        run: |
+          if [ -z "${{ secrets.BACKEND_ENV_FILE }}" ]; then
+            echo "❌ Missing BACKEND_ENV_FILE secret"
+            exit 1
+          fi
+          mkdir -p deploy/src/backend
+          printf '%s\n' "${{ secrets.BACKEND_ENV_FILE }}" > deploy/src/backend/.env.production
+          chmod 600 deploy/src/backend/.env.production
+
+      - name: Deploy to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          source: "deploy/*"
+          target: ${{ secrets.DEPLOY_PATH || '/opt/git-visualize-engine' }}
+          strip_components: 0
+
+      - name: Deploy with Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/opt/git-visualize-engine' }}"
+            COMPOSE_FILE="${{ env.DOCKER_COMPOSE_FILE }}"
+            
+            cd "$DEPLOY_PATH"
+            
+            # Set environment variables
+            export IMAGE_TAG=${{ github.sha }}
+            export BUILD_DATE=${{ env.BUILD_DATE }}
+            export GIT_COMMIT=${{ env.GIT_COMMIT }}
+            export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            
+            # Pull latest image if using Docker Hub
+            if [ -n "$DOCKER_USERNAME" ]; then
+              echo "Pulling latest Docker image..."
+              docker pull "$DOCKER_USERNAME/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" || true
+              docker pull "$DOCKER_USERNAME/${{ env.DOCKER_IMAGE_NAME }}:latest" || true
+            fi
+            
+            # Stop existing containers gracefully
+            echo "Stopping existing containers..."
+            docker-compose -f "$COMPOSE_FILE" down --timeout 30 || true
+            
+            # Start services with new image
+            echo "Starting services with new image..."
+            docker-compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
+            
+            # Wait for services to be healthy
+            echo "Waiting for services to be healthy..."
+            timeout 120 bash -c 'until docker-compose -f "$COMPOSE_FILE" ps | grep -q "Up (healthy)"; do sleep 5; done' || true
+            
+            # Clean up old images
+            echo "Cleaning up old Docker images..."
+            docker image prune -f --filter "until=168h" || true
+            
+            # Show service status
+            echo "Service status:"
+            docker-compose -f "$COMPOSE_FILE" ps
+
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/opt/git-visualize-engine' }}"
+            COMPOSE_FILE="${{ env.DOCKER_COMPOSE_FILE }}"
+            
+            cd "$DEPLOY_PATH"
+            
+            # Check backend health
+            echo "Checking backend health..."
+            for i in {1..10}; do
+              if docker-compose -f "$COMPOSE_FILE" exec -T backend node -e "require('http').get('http://localhost:8000/docs', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1));" 2>/dev/null; then
+                echo "✅ Backend is healthy"
+                exit 0
+              fi
+              echo "Waiting for backend... ($i/10)"
+              sleep 6
+            done
+            
+            echo "❌ Backend health check failed"
+            docker-compose -f "$COMPOSE_FILE" logs --tail=50 backend
+            exit 1
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+            echo "Commit: ${{ github.sha }}"
+            echo "Branch: ${{ github.ref_name }}"
+            echo "Author: ${{ github.event.head_commit.author.name }}"
+          else
+            echo "❌ Deployment failed!"
+            exit 1
+          fi
+
