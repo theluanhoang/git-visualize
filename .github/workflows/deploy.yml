@@ -41,7 +41,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        if: secrets.DOCKER_USERNAME != ''
+        if: ${{ secrets.DOCKER_USERNAME != '' }}
         uses: docker/metadata-action@v5
         with:
           images: |
