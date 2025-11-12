@@ -26,14 +26,44 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate required secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+        run: |
+          missing=()
+          [ -z "${DEPLOY_HOST}" ] && missing+=("DEPLOY_HOST")
+          [ -z "${DEPLOY_USER}" ] && missing+=("DEPLOY_USER")
+          [ -z "${DEPLOY_SSH_KEY}" ] && missing+=("DEPLOY_SSH_KEY")
+          [ -z "${BACKEND_ENV_FILE}" ] && missing+=("BACKEND_ENV_FILE")
+
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "❌ Missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
             network=host
 
+      - name: Check Docker credentials
+        id: check_docker
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          if [ -n "${DOCKER_USERNAME}" ] && [ -n "${DOCKER_PASSWORD}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Log in to Docker Hub (if needed)
-        if: ${{ secrets.DOCKER_USERNAME != '' }}
+        if: ${{ steps.check_docker.outputs.has_creds == 'true' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -41,7 +71,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        if: ${{ secrets.DOCKER_USERNAME != '' }}
+        if: ${{ steps.check_docker.outputs.has_creds == 'true' }}
         uses: docker/metadata-action@v5
         with:
           images: |
@@ -54,7 +84,7 @@ jobs:
       - name: Set image tag
         id: image-tag
         run: |
-          if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
+          if [ "${{ steps.check_docker.outputs.has_creds }}" = "true" ]; then
             echo "tags=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
             echo "labels=${{ steps.meta.outputs.labels }}" >> $GITHUB_OUTPUT
           else
@@ -67,7 +97,7 @@ jobs:
         with:
           context: ./src/backend
           file: ./src/backend/Dockerfile
-          push: ${{ secrets.DOCKER_USERNAME != '' }}
+          push: ${{ steps.check_docker.outputs.has_creds == 'true' }}
           tags: ${{ steps.image-tag.outputs.tags }}
           labels: ${{ steps.image-tag.outputs.labels }}
           cache-from: type=gha
@@ -130,7 +160,6 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export BUILD_DATE=${{ env.BUILD_DATE }}
             export GIT_COMMIT=${{ env.GIT_COMMIT }}
-            export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             
             # Pull latest image if using Docker Hub
             if [ -n "$DOCKER_USERNAME" ]; then
@@ -158,6 +187,8 @@ jobs:
             # Show service status
             echo "Service status:"
             docker-compose -f "$COMPOSE_FILE" ps
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
 
       - name: Health check
         uses: appleboy/ssh-action@v1.0.3
@@ -186,6 +217,8 @@ jobs:
             echo "❌ Backend health check failed"
             docker-compose -f "$COMPOSE_FILE" logs --tail=50 backend
             exit 1
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
 
       - name: Deployment summary
         if: always()
