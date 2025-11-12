@@ -254,7 +254,7 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex flex-col lg:flex-row bg-background border border-border rounded-xl shadow-sm overflow-hidden min-h-[calc(100vh-12rem)]">
       {}
       <div className="flex-1 flex flex-col">
         {}
@@ -316,8 +316,8 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
       {isGoalModalOpen && practice.goalRepositoryState && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsGoalModalOpen(false)} />
-          <div className="relative w-full max-w-5xl bg-background border border-[var(--border)] rounded-lg shadow-xl">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)]">
+          <div className="relative w-full max-w-5xl bg-background border border-border rounded-lg shadow-xl">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border">
               <h2 className="text-lg font-semibold">Goal Graph</h2>
               <button onClick={() => setIsGoalModalOpen(false)} className="px-2 py-1 text-sm border rounded hover:bg-muted">Close</button>
             </div>

@@ -81,8 +81,8 @@ function PracticeSessionPageContent() {
 
   return (
     <PrivateRoute showAccessDenied={false}>
-      <div className="">
-        <main className="container mx-auto mt-10 px-4">
+      <div className="pb-16">
+        <main className="container mx-auto mt-10 px-4 min-h-[calc(100vh-8rem)]">
         <PracticeHeader 
           lessonTitle={lesson?.title}
           lessonDescription={lesson?.description}

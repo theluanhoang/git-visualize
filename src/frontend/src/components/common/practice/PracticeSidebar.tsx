@@ -49,7 +49,7 @@ export default function PracticeSidebar({
   const expectedCommands = practice.expectedCommands || [];
 
   return (
-    <div className="w-80 bg-background border-l border-border h-full overflow-y-auto">
+    <div className="w-full lg:w-80 bg-background border-t lg:border-t-0 lg:border-l border-border lg:self-stretch max-h-[60vh] lg:max-h-none overflow-y-auto">
       <div className="p-4 space-y-4">
         {}
         <Card>
@@ -91,7 +91,7 @@ export default function PracticeSidebar({
                   {practice.hints.map((hint, index) => (
                     <div key={hint.id} className="flex items-start gap-2 text-sm">
                       <Circle className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                      <span className="flex-1 break-words leading-relaxed min-w-0">{hint.content}</span>
+                      <span className="flex-1 wrap-break-word leading-relaxed min-w-0">{hint.content}</span>
                     </div>
                   ))}
                 </div>
@@ -145,7 +145,7 @@ export default function PracticeSidebar({
                             toast.error('Sao chép thất bại', { id: t, position: 'top-right' });
                           }
                         }}
-                        className="inline-flex items-center justify-center rounded border border-[var(--border)] bg-background hover:bg-muted p-1 text-muted-foreground"
+                        className="inline-flex items-center justify-center rounded border border-border bg-background hover:bg-muted p-1 text-muted-foreground"
                         title="Copy command"
                         aria-label={copiedCommandId === cmd.id ? `Copied command ${cmd.order}` : `Copy command ${cmd.order}`}
                       >
