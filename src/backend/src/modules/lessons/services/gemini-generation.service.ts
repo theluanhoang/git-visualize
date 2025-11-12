@@ -12,6 +12,9 @@ export interface GenerationResult {
     citations: string[];
     processingTime: number;
   };
+  title: string;
+  slug: string;
+  description: string;
   practices?: any[];
 }
 
@@ -54,6 +57,9 @@ export class GeminiGenerationService {
 
       let html = rawText;
       let practices: any[] | undefined = undefined;
+      let generatedTitle = '';
+      let generatedSlug = '';
+      let generatedDescription = '';
       
       try {
         const match = rawText.match(/^\s*<!--JSON\s*(\{[\s\S]*?\})\s*-->/);
@@ -63,6 +69,16 @@ export class GeminiGenerationService {
           try {
             const parsed = JSON.parse(jsonPart);
             
+            if (typeof parsed?.title === 'string') {
+              generatedTitle = parsed.title.trim();
+            }
+            if (typeof parsed?.description === 'string') {
+              generatedDescription = parsed.description.trim();
+            }
+            if (typeof parsed?.slug === 'string') {
+              generatedSlug = parsed.slug.trim();
+            }
+
             if (Array.isArray(parsed?.practices)) {
               practices = parsed.practices;
               
@@ -92,6 +108,9 @@ export class GeminiGenerationService {
       }
 
       const sanitizedHtml = this.sanitizeHtml(html);
+      const title = this.ensureTitle(generatedTitle, extractedContent);
+      const description = this.ensureDescription(generatedDescription, sanitizedHtml, extractedContent);
+      const slug = this.generateSlug(generatedSlug || title);
 
       const processingTime = Date.now() - startTime;
 
@@ -103,6 +122,9 @@ export class GeminiGenerationService {
           citations: this.extractCitations(extractedContent),
           processingTime,
         },
+        title,
+        slug,
+        description,
         ...(practices ? { practices } : {}),
       };
       } catch (error) {
@@ -145,6 +167,79 @@ export class GeminiGenerationService {
     throw new BadRequestException('Failed to generate lesson content after multiple attempts.');
   }
 
+  private ensureTitle(generatedTitle: string, extractedContent: ExtractedContent): string {
+    const fallbackTitle = extractedContent.title?.trim();
+    const title = generatedTitle?.trim() || fallbackTitle;
+
+    if (!title) {
+      throw new Error('Missing lesson title from AI response');
+    }
+
+    return this.capitalizeTitle(title);
+  }
+
+  private ensureDescription(generatedDescription: string, sanitizedHtml: string, extractedContent: ExtractedContent): string {
+    const description = generatedDescription?.trim() || this.extractSummaryFromHtml(sanitizedHtml) || this.extractSummaryFromContent(extractedContent.content);
+
+    if (!description) {
+      throw new Error('Missing lesson description from AI response');
+    }
+
+    return this.truncate(description, 220);
+  }
+
+  private capitalizeTitle(title: string): string {
+    if (!title) return title;
+    return title
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+      .trim();
+  }
+
+  private extractSummaryFromHtml(html: string): string {
+    if (!html) return '';
+    const text = html
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text.split('. ').slice(0, 2).join('. ');
+  }
+
+  private extractSummaryFromContent(content: string): string {
+    if (!content) return '';
+    return content
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 220);
+  }
+
+  private truncate(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength - 3).trim()}...`;
+  }
+
+  private generateSlug(input: string): string {
+    const base = input
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .replace(/^-+|-+$/g, '');
+
+    if (!base) {
+      throw new Error('Failed to generate slug for lesson');
+    }
+
+    return base;
+  }
+
   private buildPrompt(
     extractedContent: ExtractedContent,
     language: Language,
@@ -176,6 +271,8 @@ REQUIREMENTS:
 13. Structure the content with clear headings and logical flow
 14. Include command examples with expected output
 15. Add troubleshooting sections where relevant
+16. Produce a concise lesson title (max 90 characters) and short summary (max 220 characters)
+17. Suggest an SEO-friendly slug in lowercase-kebab-case using only letters, numbers, and hyphens
 
 SOURCE CONTENT:
 Title: ${extractedContent.title}
@@ -195,9 +292,9 @@ SUPPORTED GIT COMMANDS (use ONLY these commands in expectedCommands):
 - git switch -c [branch] - Create and switch to new branch
 - git clear - Clear repository state (for resetting)
 
-STEP 1: Start your response with a JSON comment containing the practice data. Use this EXACT format:
+STEP 1: Start your response with a JSON comment containing the lesson metadata and practice data. Use this EXACT format:
 
-<!--JSON {"practices":[{"title":"Practice Title","scenario":"Practice scenario","difficulty":2,"estimatedTime":15,"instructions":[{"content":"Step 1 instruction","order":1}],"hints":[{"content":"Helpful hint"}],"expectedCommands":[{"command":"git init","order":1,"isRequired":true,"expectedOutput":"Initialized empty Git repository"},{"command":"git commit -m \"Initial commit\"","order":2,"isRequired":true,"expectedOutput":"Commit created successfully"}],"validationRules":[{"type":"min_commands","value":"2"}],"tags":[{"name":"git-basics"}],"goalRepositoryState":{"commits":[{"id":"a1b2c3d4e5f6","type":"COMMIT","parents":[],"author":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"committer":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"message":"Initial commit","branch":"main"}],"branches":[{"name":"main","commitId":"a1b2c3d4e5f6"}],"tags":[],"head":{"type":"branch","ref":"main","commitId":"a1b2c3d4e5f6"}}]} -->
+<!--JSON {"title":"Concise Lesson Title","slug":"concise-lesson-title","description":"Short summary of the lesson within 220 characters.","practices":[{"title":"Practice Title","scenario":"Practice scenario","difficulty":2,"estimatedTime":15,"instructions":[{"content":"Step 1 instruction","order":1}],"hints":[{"content":"Helpful hint"}],"expectedCommands":[{"command":"git init","order":1,"isRequired":true,"expectedOutput":"Initialized empty Git repository"},{"command":"git commit -m \"Initial commit\"","order":2,"isRequired":true,"expectedOutput":"Commit created successfully"}],"validationRules":[{"type":"min_commands","value":"2"}],"tags":[{"name":"git-basics"}],"goalRepositoryState":{"commits":[{"id":"a1b2c3d4e5f6","type":"COMMIT","parents":[],"author":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"committer":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"message":"Initial commit","branch":"main"}],"branches":[{"name":"main","commitId":"a1b2c3d4e5f6"}],"tags":[],"head":{"type":"branch","ref":"main","commitId":"a1b2c3d4e5f6"}}]} -->
 
 STRICT JSON RULES (MANDATORY):
 - Output MUST be valid JSON according to RFC 8259.

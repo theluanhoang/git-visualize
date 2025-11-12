@@ -91,6 +91,24 @@ export class GenerateLessonDto {
 
 export class GenerateLessonResponseDto {
   @ApiProperty({
+    description: 'AI suggested lesson title',
+    example: 'Understanding Git Branching Strategies',
+  })
+  title: string;
+
+  @ApiProperty({
+    description: 'AI suggested slug derived from the title',
+    example: 'understanding-git-branching-strategies',
+  })
+  slug: string;
+
+  @ApiProperty({
+    description: 'Short description summarizing the lesson',
+    example: 'Learn how to create, switch, and merge branches in Git with practical commands and real-world workflows.',
+  })
+  description: string;
+
+  @ApiProperty({
     description: 'Generated HTML content',
     example: '<h1>Git Branching</h1><p>This lesson covers...</p>',
   })

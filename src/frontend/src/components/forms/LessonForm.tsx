@@ -142,9 +142,25 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
   }) => {
     try {   
       const result = await generateLessonMutation.mutateAsync(params);
-      
+
       setContent(result.html);
-      
+
+      if (result.title) {
+        setValue('title', result.title, { shouldDirty: true, shouldValidate: true });
+      }
+
+      const slugSource = result.slug || result.title;
+      if (slugSource) {
+        const generatedSlugValue = generateSlug(slugSource);
+        if (generatedSlugValue) {
+          setValue('slug', generatedSlugValue, { shouldDirty: true, shouldValidate: true });
+        }
+      }
+
+      if (result.description) {
+        setValue('description', result.description, { shouldDirty: true, shouldValidate: true });
+      }
+
       if (result.meta) {
         toast.success('Bài học đã được tạo thành công!');
       }

@@ -85,9 +85,16 @@ describe('LessonController', () => {
     });
 
     it('file source with file calls generation', async () => {
-      generationService.generateLesson.mockResolvedValue({ content: 'ok' } as any);
+      const response = {
+        html: '<p>ok</p>',
+        meta: { model: 'gemini', tokens: 10, citations: [], processingTime: 100 },
+        title: 'Generated Lesson',
+        slug: 'generated-lesson',
+        description: 'Short description'
+      };
+      generationService.generateLesson.mockResolvedValue(response as any);
       const res = await controller.generateLesson({ buffer: Buffer.from('a'), originalname: 'a.txt' } as any, { sourceType: SourceType.FILE } as any);
-      expect(res).toEqual({ content: 'ok' });
+      expect(res).toEqual(response);
       expect(generationService.generateLesson).toHaveBeenCalled();
     });
 
@@ -98,9 +105,16 @@ describe('LessonController', () => {
     });
 
     it('url source with url calls generation', async () => {
-      generationService.generateLesson.mockResolvedValue({ content: 'ok2' } as any);
+      const response = {
+        html: '<p>ok2</p>',
+        meta: { model: 'gemini', tokens: 12, citations: [], processingTime: 120 },
+        title: 'Generated Lesson 2',
+        slug: 'generated-lesson-2',
+        description: 'Another description'
+      };
+      generationService.generateLesson.mockResolvedValue(response as any);
       const res = await controller.generateLesson(undefined as any, { sourceType: SourceType.URL, url: 'https://a' } as any);
-      expect(res).toEqual({ content: 'ok2' });
+      expect(res).toEqual(response);
     });
 
     it('invalid source type throws', async () => {
