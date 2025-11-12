@@ -53,7 +53,7 @@ export default function Sidebar({ items }: Props) {
                                         aria-current={isActive ? "page" : undefined}
                                     >
                                         <span className="font-medium">{item.title}</span>
-                                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                                     </Link>
                                 </span>
                             );
