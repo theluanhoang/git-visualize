@@ -259,6 +259,17 @@
       "totalPractices": "{count} bài thực hành",
       "emptyMessage": "Không tìm thấy bài thực hành phù hợp với tiêu chí",
       "selectPracticePrompt": "Chọn một bài thực hành để xem chi tiết"
+    },
+    "details": {
+      "difficultyUnknown": "Không xác định",
+      "estimatedTimeLabel": "{count, plural, one {{count} phút} other {{count} phút}}",
+      "viewsCount": "{count, plural, one {{count} lượt xem} other {{count} lượt xem}}",
+      "completionsCount": "{count, plural, one {{count} lượt hoàn thành} other {{count} lượt hoàn thành}}",
+      "instructionsTitle": "Hướng dẫn",
+      "hintsTitle": "Gợi ý",
+      "expectedCommandsTitle": "Các lệnh dự kiến",
+      "validationRulesTitle": "Quy tắc kiểm tra",
+      "required": "Bắt buộc"
     }
   },
   "admin": {

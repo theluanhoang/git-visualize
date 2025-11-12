@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Clock, Eye, CheckCircle, Play, Lightbulb, List, Terminal, Shield } from 'lucide-react';
 import { Practice } from '@/services/practices';
-import { getDifficultyColor, getDifficultyText } from '@/utils/practice';
+import { getDifficultyColor } from '@/utils/practice';
+import { useTranslations } from 'next-intl';
 
 interface PracticeDetailsProps {
   practice: Practice;
@@ -14,6 +15,23 @@ interface PracticeDetailsProps {
 }
 
 export default function PracticeDetails({ practice, onStartPractice }: PracticeDetailsProps) {
+  const t = useTranslations('practice');
+
+  const getDifficultyLabel = (difficulty: number) => {
+    switch (difficulty) {
+      case 1:
+        return t('beginner');
+      case 2:
+        return t('intermediate');
+      case 3:
+        return t('advanced');
+      default:
+        return t('details.difficultyUnknown');
+    }
+  };
+
+  const formatCount = (key: 'estimatedTimeLabel' | 'viewsCount' | 'completionsCount', count: number) =>
+    t(`details.${key}`, { count });
 
   return (
     <motion.div
@@ -38,7 +56,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
               className={`ml-4 ${getDifficultyColor(practice.difficulty)}`}
               variant="secondary"
             >
-              {getDifficultyText(practice.difficulty)}
+              {getDifficultyLabel(practice.difficulty)}
             </Badge>
           </div>
         </CardHeader>
@@ -48,15 +66,15 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4" />
-                <span>{practice.estimatedTime} minutes</span>
+                <span>{formatCount('estimatedTimeLabel', practice.estimatedTime)}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Eye className="w-4 h-4" />
-                <span>{practice.views} views</span>
+                <span>{formatCount('viewsCount', practice.views)}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <CheckCircle className="w-4 h-4" />
-                <span>{practice.completions} completions</span>
+                <span>{formatCount('completionsCount', practice.completions)}</span>
               </div>
             </div>
             
@@ -66,7 +84,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
               className="ml-auto"
             >
               <Play className="w-5 h-5 mr-2" />
-              Start Practice
+              {t('startPractice')}
             </Button>
           </div>
           
@@ -93,7 +111,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <List className="w-5 h-5" />
-              <span>Instructions</span>
+              <span>{t('details.instructionsTitle')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -102,7 +120,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
                 .sort((a, b) => a.order - b.order)
                 .map((instruction, index) => (
                   <div key={instruction.id} className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                    <div className="shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
                       {index + 1}
                     </div>
                     <p className="text-sm text-foreground">{instruction.content}</p>
@@ -119,7 +137,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Lightbulb className="w-5 h-5" />
-              <span>Hints</span>
+              <span>{t('details.hintsTitle')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -128,7 +146,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
                 .sort((a, b) => a.order - b.order)
                 .map((hint, index) => (
                   <div key={hint.id} className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    <div className="shrink-0 w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center text-sm font-medium text-yellow-800 dark:text-yellow-200">
                       💡
                     </div>
                     <p className="text-sm text-foreground">{hint.content}</p>
@@ -145,7 +163,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Terminal className="w-5 h-5" />
-              <span>Expected Commands</span>
+              <span>{t('details.expectedCommandsTitle')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -154,7 +172,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
                 .sort((a, b) => a.order - b.order)
                 .map((command, index) => (
                   <div key={command.id} className="flex items-center space-x-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-medium text-blue-800 dark:text-blue-200">
+                    <div className="shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-medium text-blue-800 dark:text-blue-200">
                       {index + 1}
                     </div>
                     <code className="flex-1 bg-muted px-3 py-2 rounded-md text-sm font-mono">
@@ -162,7 +180,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
                     </code>
                     {command.isRequired && (
                       <Badge variant="destructive" className="text-xs">
-                        Required
+                        {t('details.required')}
                       </Badge>
                     )}
                   </div>
@@ -178,7 +196,7 @@ export default function PracticeDetails({ practice, onStartPractice }: PracticeD
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Shield className="w-5 h-5" />
-              <span>Validation Rules</span>
+              <span>{t('details.validationRulesTitle')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>

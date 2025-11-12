@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Clock, Eye, CheckCircle, Play, Info } from 'lucide-react';
 import { Practice } from '@/services/practices';
-import { getDifficultyColor, getDifficultyText, formatTime } from '@/utils/practice';
+import { getDifficultyColor } from '@/utils/practice';
 import { useTranslations } from 'next-intl';
 
 interface PracticeListProps {
@@ -24,6 +24,19 @@ export default function PracticeList({
 }: PracticeListProps) {
   const t = useTranslations('practice');
 
+  const getDifficultyLabel = (difficulty: number) => {
+    switch (difficulty) {
+      case 1:
+        return t('beginner');
+      case 2:
+        return t('intermediate');
+      case 3:
+        return t('advanced');
+      default:
+        return t('details.difficultyUnknown');
+    }
+  };
+
   return (
     <div className="space-y-4">
       {practices.map((practice, index) => (
@@ -34,12 +47,11 @@ export default function PracticeList({
           transition={{ duration: 0.3, delay: index * 0.1 }}
         >
           <Card 
-            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+            className={`transition-all duration-200 hover:shadow-md ${
               selectedPracticeId === practice.id 
                 ? 'ring-2 ring-primary border-primary' 
                 : 'hover:border-primary/50'
             }`}
-            onClick={() => onSelectPractice?.(practice)}
           >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -55,7 +67,7 @@ export default function PracticeList({
                   className={`ml-3 ${getDifficultyColor(practice.difficulty)}`}
                   variant="secondary"
                 >
-                  {getDifficultyText(practice.difficulty)}
+                  {getDifficultyLabel(practice.difficulty)}
                 </Badge>
               </div>
             </CardHeader>
@@ -65,15 +77,15 @@ export default function PracticeList({
                 <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                   <div className="flex items-center space-x-1">
                     <Clock className="w-4 h-4" />
-                    <span>{practice.estimatedTime} min</span>
+                    <span>{t('details.estimatedTimeLabel', { count: practice.estimatedTime })}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Eye className="w-4 h-4" />
-                    <span>{practice.views}</span>
+                    <span>{t('details.viewsCount', { count: practice.views })}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <CheckCircle className="w-4 h-4" />
-                    <span>{practice.completions}</span>
+                    <span>{t('details.completionsCount', { count: practice.completions })}</span>
                   </div>
                 </div>
                 

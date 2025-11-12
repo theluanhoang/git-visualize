@@ -11,18 +11,6 @@ export const getDifficultyColor = (difficulty: number): string => {
       return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
   }
 };
-export const getDifficultyText = (difficulty: number): string => {
-  switch (difficulty) {
-    case 1: 
-      return 'Beginner';
-    case 2: 
-      return 'Intermediate';
-    case 3: 
-      return 'Advanced';
-    default: 
-      return 'Unknown';
-  }
-};
 export const getDifficultyIcon = (difficulty: number): string => {
   switch (difficulty) {
     case 1: 

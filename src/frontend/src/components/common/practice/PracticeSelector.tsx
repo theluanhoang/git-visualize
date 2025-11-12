@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Grid, List } from 'lucide-react';
 import { usePractices } from '@/lib/react-query/hooks/use-practices';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Practice } from '@/services/practices';
 import PracticeList from './PracticeList';
 import PracticeDetails from './PracticeDetails';
@@ -23,6 +24,8 @@ interface PracticeSelectorProps {
 
 export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTitle }: PracticeSelectorProps) {
   const t = useTranslations('practice');
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedPractice, setSelectedPractice] = useState<Practice | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<number | 'all'>('all');
@@ -38,7 +41,9 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
     offset: (page - 1) * pageSize,
   });
 
-  const practices = Array.isArray(practicesData) ? practicesData : (practicesData as { data: Practice[] })?.data || [];
+  const practices = useMemo(() => (
+    Array.isArray(practicesData) ? practicesData : (practicesData as { data: Practice[] })?.data || []
+  ), [practicesData]);
   const totalItems = (practicesData as { total?: number })?.total ?? practices.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const displayedPractices = practices.filter((practice: Practice) =>
@@ -46,14 +51,31 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
     practice.scenario.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  useEffect(() => {
+    const selectedId = searchParams?.get('practice');
+    if (!selectedId || selectedPractice?.id === selectedId) {
+      return;
+    }
+
+    const found = practices.find((practice) => practice.id === selectedId);
+    if (found) {
+      setSelectedPractice(found);
+    }
+  }, [searchParams, practices, selectedPractice?.id]);
+
   const handleSelectPractice = (practice: Practice) => {
     setSelectedPractice(practice);
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : undefined);
+    params.set('practice', practice.id);
+    router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const handleStartPractice = () => {
-    if (selectedPractice && onStartPractice) {
-      onStartPractice(selectedPractice);
+  const handleStartPractice = (practiceOverride?: Practice) => {
+    const practiceToStart = practiceOverride ?? selectedPractice;
+    if (!practiceToStart || !onStartPractice) {
+      return;
     }
+    onStartPractice(practiceToStart);
   };
 
   if (isLoading) {
@@ -163,7 +185,7 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
                 <PracticeList
                   practices={displayedPractices}
                   onSelectPractice={handleSelectPractice}
-                  onStartPractice={onStartPractice}
+                  onStartPractice={handleStartPractice}
                   selectedPracticeId={selectedPractice?.id}
                 />
               )}
@@ -190,7 +212,7 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
           {selectedPractice ? (
             <PracticeDetails
               practice={selectedPractice}
-              onStartPractice={handleStartPractice}
+              onStartPractice={() => handleStartPractice(selectedPractice)}
             />
           ) : (
             <Card>

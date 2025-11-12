@@ -259,6 +259,17 @@
       "totalPractices": "{count} practices",
       "emptyMessage": "No practices found matching your criteria",
       "selectPracticePrompt": "Select a practice to view details"
+    },
+    "details": {
+      "difficultyUnknown": "Unknown",
+      "estimatedTimeLabel": "{count, plural, one {{count} minute} other {{count} minutes}}",
+      "viewsCount": "{count, plural, one {{count} view} other {{count} views}}",
+      "completionsCount": "{count, plural, one {{count} completion} other {{count} completions}}",
+      "instructionsTitle": "Instructions",
+      "hintsTitle": "Hints",
+      "expectedCommandsTitle": "Expected Commands",
+      "validationRulesTitle": "Validation Rules",
+      "required": "Required"
     }
   },
   "admin": {
