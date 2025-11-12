@@ -508,7 +508,12 @@
       "result": "result",
       "results": "results",
       "noResultsFound": "No lessons found for \"{query}\"",
-      "tryDifferentKeywords": "Try searching with different keywords"
+      "tryDifferentKeywords": "Try searching with different keywords",
+      "noLessonsAvailable": "No Lessons Available",
+      "noLessonsDescription": "There are currently no lessons available. Check back later or contact the administrator if you believe this is an error.",
+      "exploreOtherSections": "Explore Other Sections",
+      "goToPractice": "Go to Practice",
+      "goToHome": "Go to Home"
     },
     "rating": {
       "title": "Lesson Rating",

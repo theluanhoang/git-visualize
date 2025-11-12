@@ -7,6 +7,7 @@ import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, X } from 'lucide-react';
 import { SearchParamsProvider } from '@/components/common';
+import { EmptyLessonsState } from '@/components/common/git-theory/EmptyLessonsState';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,10 @@ function GitTheoryPageContent() {
       }
     }
   }, [data, router, query, locale]);
+
+  if (!isLoading && !error && !query && (!data || data.length === 0)) {
+    return <EmptyLessonsState />;
+  }
 
   const clearSearch = () => {
     router.push(`/${locale}/git-theory`);

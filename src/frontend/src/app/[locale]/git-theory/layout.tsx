@@ -31,6 +31,7 @@ function GitTheoryLayout({ children }: Props) {
             return aTime - bTime; // oldest -> newest
         })
         .map((l: any) => ({ slug: l.slug, title: l.title, description: l.description ?? '' })) : [];
+    const hasLessons = !isLoading && data.length > 0;
 
     return (
         <main className='container mx-auto mt-8 md:mt-10'>
@@ -59,8 +60,8 @@ function GitTheoryLayout({ children }: Props) {
                     </div>
                 </div>
             </div>
-            <div className="mt-6 md:mt-8 flex flex-col md:flex-row gap-6 md:gap-8">
-                <Sidebar items={data ?? []} />
+            <div className={`mt-6 md:mt-8 flex flex-col gap-6 ${hasLessons ? 'md:flex-row md:gap-8' : ''}`}>
+                {hasLessons && <Sidebar items={data ?? []} />}
                 <div className="flex-1">
                     {children}
                 </div>

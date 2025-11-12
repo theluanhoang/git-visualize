@@ -507,7 +507,12 @@
       "result": "kết quả",
       "results": "kết quả",
       "noResultsFound": "Không tìm thấy bài học cho \"{query}\"",
-      "tryDifferentKeywords": "Thử tìm kiếm với từ khóa khác"
+      "tryDifferentKeywords": "Thử tìm kiếm với từ khóa khác",
+      "noLessonsAvailable": "Chưa có bài học nào",
+      "noLessonsDescription": "Hiện tại chưa có bài học nào. Vui lòng quay lại sau hoặc liên hệ quản trị viên nếu bạn cho rằng đây là lỗi.",
+      "exploreOtherSections": "Khám phá các phần khác",
+      "goToPractice": "Đi đến thực hành",
+      "goToHome": "Về trang chủ"
     },
     "rating": {
       "title": "Đánh giá bài học",
