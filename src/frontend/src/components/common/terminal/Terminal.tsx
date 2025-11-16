@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form';
 import { useGitEngine } from '@/lib/react-query/hooks/use-git-engine';
+import { useCustomCaret } from '@/hooks';
 
 export interface TerminalLine {
     type: 'command' | 'output' | 'success' | 'error';
@@ -28,8 +29,28 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
     const [isFocused, setIsFocused] = useState(false);
     const { register, handleSubmit, reset, watch } = useForm<{ command: string }>();
     const commandValue = watch('command') ?? '';
-    const measureRef = useRef<HTMLSpanElement>(null);
-    const [cursorLeft, setCursorLeft] = useState(0);
+    const { measureRef, measuredText, caretStyle, handleChange, handleSelect, handleKey, handleMouseUp, handleFocus, handleBlur, registerInputRef } = useCustomCaret({ value: commandValue });
+    const { ref, onChange, onBlur: rhfOnBlur, name } = register("command");
+
+    const handleInputRef = useCallback((element: HTMLInputElement | null) => {
+        registerInputRef(element, ref);
+    }, [registerInputRef, ref]);
+
+    const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(event);
+        handleChange(event);
+    }, [handleChange, onChange]);
+
+    const handleInputFocus = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
+        setIsFocused(true);
+        handleFocus(event);
+    }, [handleFocus]);
+
+    const handleInputBlur = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
+        rhfOnBlur(event);
+        setIsFocused(false);
+        handleBlur(event);
+    }, [handleBlur, rhfOnBlur]);
 
     const displayResponses = isPreviewMode ? previewLines.map(line => ({
         command: line.type === 'command' ? line.text : undefined,
@@ -58,13 +79,6 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
             outputRef.current.scrollTop = outputRef.current.scrollHeight;
         }
     }, [displayResponses]);
-
-    useEffect(() => {
-        if (measureRef.current) {
-            const rect = measureRef.current.getBoundingClientRect();
-            setCursorLeft(rect.width);
-        }
-    }, [commandValue]);
 
     const getLineColor = (type: 'command' | 'success' | 'error' | 'output') => {
         switch (type) {
@@ -150,36 +164,35 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
                                 ref={measureRef}
                                 className="absolute left-0 top-1/2 -translate-y-1/2 opacity-0 whitespace-pre font-mono text-sm"
                             >
-                                {commandValue}
+                                {measuredText}
                             </span>
                             {isFocused && (
                                 <motion.span
                                     className="absolute top-1/2 -translate-y-1/2 w-2 h-4 bg-blue-600 dark:bg-blue-400 pointer-events-none"
-                                    style={{ left: commandValue.length === 0 ? 0 : cursorLeft }}
+                                    style={caretStyle}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: [1, 0] }}
                                     transition={{ duration: 0.8, repeat: Infinity }}
                                 />
                             )}
-                            {(() => {
-                            const { ref, onChange, onBlur: rhfOnBlur, name } = register("command");
-                            return (
-                                <input
-                            type="text"
-                                    className="w-full bg-transparent text-blue-600 dark:text-blue-400 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none text-sm"
-                                    style={{ caretColor: isFocused ? 'transparent' : undefined }}
-                            placeholder={t('placeholder')}
-                            aria-label={t('placeholder')}
-                            autoFocus
-                            autoComplete="off"
-                                    name={name}
-                                    ref={ref}
-                                    onChange={onChange}
-                                    onFocus={() => setIsFocused(true)}
-                                    onBlur={(e) => { rhfOnBlur(e); setIsFocused(false); }}
-                                />
-                            );
-                            })()}
+                            <input
+                                type="text"
+                                className="w-full bg-transparent text-blue-600 dark:text-blue-400 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none text-sm"
+                                style={{ caretColor: isFocused ? 'transparent' : undefined }}
+                                placeholder={t('placeholder')}
+                                aria-label={t('placeholder')}
+                                autoFocus
+                                autoComplete="off"
+                                name={name}
+                                ref={handleInputRef}
+                                onChange={handleInputChange}
+                                onSelect={handleSelect}
+                                onKeyDown={handleKey}
+                                onKeyUp={handleKey}
+                                onMouseUp={handleMouseUp}
+                                onFocus={handleInputFocus}
+                                onBlur={handleInputBlur}
+                            />
                         </div>
                     </form>
                 </div>
