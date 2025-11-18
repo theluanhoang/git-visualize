@@ -1,16 +1,82 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React from 'react';
 import api from '@/lib/api/axios';
 import { IRepositoryState, GitCommandResponse } from '@/types/git';
 import { PracticeRepoStateService } from '@/services/practiceRepositoryState';
 import { LOCALSTORAGE_KEYS, localStorageHelpers } from '@/constants/localStorage';
-import { gitKeys, terminalKeys, goalKeys } from '@/lib/react-query/query-keys';
+import { gitKeys, terminalKeys } from '@/lib/react-query/query-keys';
 
 const terminalKeyFor = (practiceId?: string, version?: number) => 
   practiceId ? LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId, version) : LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES('global');
 
 const saveTerminalResponses = (responses: GitCommandResponse[], practiceId?: string, version?: number) => {
-  localStorageHelpers.setJSON(terminalKeyFor(practiceId, version), responses);
+  const key = terminalKeyFor(practiceId, version);
+  localStorageHelpers.setJSON(key, responses);
+};
+
+const getTerminalResponses = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  practiceId?: string,
+  version?: number
+): GitCommandResponse[] => {
+  const versionedKey = terminalKeyFor(practiceId, version);
+  const queryKey = terminalKeys.practice(practiceId);
+  
+  let responses = localStorageHelpers.getJSON<GitCommandResponse[]>(versionedKey, []);
+  
+  if (responses.length > 0) {
+    return responses;
+  }
+  
+  responses = queryClient.getQueryData<GitCommandResponse[]>(queryKey) || [];
+  
+  if (responses.length > 0) {
+    return responses;
+  }
+  
+  if (practiceId) {
+    const legacyKey = LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId);
+    responses = localStorageHelpers.getJSON<GitCommandResponse[]>(legacyKey, []);
+    
+    if (responses.length > 0 && version !== undefined) {
+      localStorageHelpers.setJSON(versionedKey, responses);
+    }
+  }
+  
+  return responses;
+};
+
+const updateTerminalResponsesCache = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  responses: GitCommandResponse[],
+  practiceId?: string,
+  version?: number
+) => {
+  const queryKey = terminalKeys.practice(practiceId);
+  
+  queryClient.setQueryData<GitCommandResponse[]>(queryKey, responses);
+  
+  saveTerminalResponses(responses, practiceId, version);
+  
+  if (practiceId === 'goal-builder') {
+    queryClient.setQueryData(terminalKeys.goal, responses);
+  }
+};
+
+const rebuildRepositoryStateFromResponses = (responses: GitCommandResponse[]): IRepositoryState | null => {
+  if (!responses || responses.length === 0) {
+    return null;
+  }
+
+  for (let i = responses.length - 1; i >= 0; i--) {
+    const response = responses[i];
+    if (response.repositoryState) {
+      return response.repositoryState;
+    }
+  }
+
+  return null;
 };
 
 export const gitEngineApi = {
@@ -28,13 +94,10 @@ export const gitEngineApi = {
     for (const command of commands) {
       try {
         const response = await gitEngineApi.executeGitCommand(command, currentState);
-        
         if (response.repositoryState) {
           currentState = response.repositoryState;
         }
-      } catch (error) {
-        console.warn(`Failed to execute command "${command}":`, error);
-      }
+      } catch (error) {}
     }
     
     return { repositoryState: currentState };
@@ -44,71 +107,132 @@ export const gitEngineApi = {
 export const useExecuteGitCommand = (practiceId?: string, version?: number) => {
   const queryClient = useQueryClient();
   
+  const practiceIdRef = useRef(practiceId);
+  const versionRef = useRef(version);
+  
+  useEffect(() => {
+    practiceIdRef.current = practiceId;
+    versionRef.current = version;
+  }, [practiceId, version]);
+  
   return useMutation<GitCommandResponse, unknown, string>({
     mutationFn: (command: string) => {
-      const currentState = queryClient.getQueryData<IRepositoryState | null>(['git', 'state', practiceId ?? 'global']);
+      const currentPracticeId = practiceIdRef.current;
+      const currentStateKey = gitKeys.state(currentPracticeId);
+      const currentState = queryClient.getQueryData<IRepositoryState | null>(currentStateKey);
       
       if (currentState && command === 'git init') {
-        queryClient.setQueryData(['git', 'state', practiceId ?? 'global'], null);
+        queryClient.setQueryData(currentStateKey, null);
         return gitEngineApi.executeGitCommand(command, null);
       }
       
       return gitEngineApi.executeGitCommand(command, currentState ?? null);
     },
     onSuccess: (data, command) => {
-      const key = terminalKeys.practice(practiceId);
-      const oldResponses = queryClient.getQueryData<GitCommandResponse[]>(key) || [];
-      const newResponses = [...oldResponses, { ...data, command }];
+      const currentPracticeId = practiceIdRef.current;
+      const currentVersion = versionRef.current;
+      const currentStateKey = gitKeys.state(currentPracticeId);
+      const currentVersionKey = currentPracticeId ? ['git', 'state-version', currentPracticeId] as const : null;
       
-      queryClient.setQueryData<GitCommandResponse[]>(key, newResponses);
+      const oldResponses = getTerminalResponses(queryClient, currentPracticeId, currentVersion);
       
-      if (practiceId === 'goal-builder') {
-        queryClient.setQueryData(terminalKeys.goal, newResponses);
-      }
+      const newResponse = { ...data, command };
+      const newResponses = [...oldResponses, newResponse];
+      
+      updateTerminalResponsesCache(queryClient, newResponses, currentPracticeId, currentVersion);
       
       if (data.repositoryState) {
-        queryClient.setQueryData(gitKeys.state(practiceId), data.repositoryState);
+        queryClient.setQueryData(currentStateKey, data.repositoryState);
       }
       
-      saveTerminalResponses(newResponses, practiceId, version);
-      if (practiceId && data.repositoryState) {
-        const currentVersion = queryClient.getQueryData<number>(['git', 'state-version', practiceId]) || 0;
-        PracticeRepoStateService.upsert(practiceId, { state: data.repositoryState, version: currentVersion }).then((res) => {
-          queryClient.setQueryData(['git', 'state-version', practiceId], res.version);
-        }).catch((err) => {
-          console.warn('Failed to upsert practice repo state:', err);
-        });
+      if (currentPracticeId && data.repositoryState && currentVersionKey) {
+        const versionValue = queryClient.getQueryData<number>(currentVersionKey) || 0;
+        PracticeRepoStateService.upsert(currentPracticeId, { state: data.repositoryState, version: versionValue })
+          .then((res) => {
+            queryClient.setQueryData(currentVersionKey, res.version);
+          })
+          .catch(() => {
+          });
       }
     },
     onError: (error, command) => {
+      const currentPracticeId = practiceIdRef.current;
+      const currentVersion = versionRef.current;
+      
       const errorResponse: GitCommandResponse = {
         success: false,
         output: error instanceof Error ? error.message : 'Unknown error',
         repositoryState: null,
         command,
       };
-      const key = terminalKeys.practice(practiceId);
-      const oldResponses = queryClient.getQueryData<GitCommandResponse[]>(key) || [];
+      
+      const oldResponses = getTerminalResponses(queryClient, currentPracticeId, currentVersion);
       const newResponses = [...oldResponses, errorResponse];
       
-      queryClient.setQueryData<GitCommandResponse[]>(key, newResponses);
-      
-      saveTerminalResponses(newResponses, practiceId, version);
+      updateTerminalResponsesCache(queryClient, newResponses, currentPracticeId, currentVersion);
     },
   });
 };
 
-export const useRepositoryState = (practiceId?: string) => {
+export const useRepositoryState = (practiceId?: string, version?: number) => {
   const queryClient = useQueryClient();
+  
+  const queryKey = useMemo(() => gitKeys.state(practiceId), [practiceId]);
+  const versionKey = useMemo(() => practiceId ? ['git', 'state-version', practiceId] as const : null, [practiceId]);
+  
   return useQuery<IRepositoryState | null>({
-    queryKey: gitKeys.state(practiceId),
+    queryKey,
     queryFn: async () => {
       if (practiceId) {
+        const terminalResponses = getTerminalResponses(queryClient, practiceId, version);
+        
+        if (terminalResponses.length > 0) {
+          const rebuiltState = rebuildRepositoryStateFromResponses(terminalResponses);
+          if (rebuiltState) {
+            let currentVersion = versionKey ? queryClient.getQueryData<number>(versionKey) : undefined;
+            if (currentVersion === undefined && versionKey) {
+              try {
+                const server = await PracticeRepoStateService.get(practiceId);
+                currentVersion = server.version;
+                queryClient.setQueryData(versionKey, currentVersion);
+              } catch {
+                currentVersion = version ?? 0;
+              }
+            }
+            
+            if (versionKey && currentVersion !== undefined) {
+              PracticeRepoStateService.upsert(practiceId, { state: rebuiltState, version: currentVersion })
+                .then((res) => {
+                  queryClient.setQueryData(versionKey, res.version);
+                })
+                .catch(() => {
+                });
+            }
+            
+            return rebuiltState;
+          }
+        }
+        
         const server = await PracticeRepoStateService.get(practiceId);
-        queryClient.setQueryData(['git', 'state-version', practiceId], server.version);
+        if (versionKey) {
+          queryClient.setQueryData(versionKey, server.version);
+        }
         return server.state;
       }
       return gitEngineApi.getRepositoryState();
+    },
+    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false, 
+    initialData: () => {
+      if (practiceId) {
+        const terminalResponses = getTerminalResponses(queryClient, practiceId, version);
+        if (terminalResponses.length > 0) {
+          return rebuildRepositoryStateFromResponses(terminalResponses);
+        }
+      }
+      return queryClient.getQueryData<IRepositoryState | null>(queryKey) ?? null;
     },
   });
 };
@@ -116,63 +240,77 @@ export const useRepositoryState = (practiceId?: string) => {
 export const useTerminalResponses = (practiceId?: string, version?: number) => {
   const queryClient = useQueryClient();
   
+  const queryKey = useMemo(() => terminalKeys.practice(practiceId), [practiceId]);
+  
   const [data, setData] = useState<GitCommandResponse[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [hasBeenReset, setHasBeenReset] = useState(false);
+  const prevPracticeIdRef = useRef<string | undefined>(practiceId);
+  const prevVersionRef = useRef<number | undefined>(version);
+  
+  useEffect(() => {
+    if (prevPracticeIdRef.current !== practiceId || prevVersionRef.current !== version) {
+      setIsInitialized(false);
+      setHasBeenReset(false);
+      prevPracticeIdRef.current = practiceId;
+      prevVersionRef.current = version;
+    }
+  }, [practiceId, version]);
   
   useEffect(() => {
     if (!isInitialized) {
-      let savedResponses = localStorageHelpers.getJSON<GitCommandResponse[]>(terminalKeyFor(practiceId, version), []);
+      const savedResponses = getTerminalResponses(queryClient, practiceId, version);
       
-      if (savedResponses.length === 0 && practiceId) {
-        const legacyKey = LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId);
-        savedResponses = localStorageHelpers.getJSON<GitCommandResponse[]>(legacyKey, []);
-        
-        if (savedResponses.length > 0 && version) {
-          localStorageHelpers.setJSON(terminalKeyFor(practiceId, version), savedResponses);
-        }
-      }
-      
-      if (hasBeenReset && savedResponses.length > 0) {
+      if (hasBeenReset) {
         setData([]);
-        queryClient.setQueryData(terminalKeys.practice(practiceId), []);
+        queryClient.setQueryData(queryKey, []);
       } else {
         setData(savedResponses);
-        queryClient.setQueryData(terminalKeys.practice(practiceId), savedResponses);
+        queryClient.setQueryData(queryKey, savedResponses);
       }
       setIsInitialized(true);
     }
-  }, [queryClient, practiceId, version, isInitialized, resetKey, hasBeenReset]);
+  }, [queryClient, practiceId, version, isInitialized, resetKey, hasBeenReset, queryKey]);
   
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      if (event.query.queryKey[0] === 'terminal-responses' && event.query.queryKey[1] === (practiceId ?? 'global')) {
-        const key = terminalKeys.practice(practiceId);
-        const newData = queryClient.getQueryData<GitCommandResponse[]>(key) || [];
-        setData(newData);
+      if (
+        event.type === 'updated' &&
+        event.query.queryKey[0] === 'terminal-responses' &&
+        event.query.queryKey[1] === (practiceId ?? 'global')
+      ) {
+        const newData = queryClient.getQueryData<GitCommandResponse[]>(queryKey) || [];
+        setData((prevData) => {
+          if (prevData.length !== newData.length) {
+            return newData;
+          }
+          return prevData;
+        });
       }
     });
     
     return unsubscribe;
-  }, [queryClient, practiceId]);
+  }, [queryClient, practiceId, queryKey]);
   
-  const reset = () => {
+  const reset = useCallback(() => {
     setIsInitialized(false);
     setData([]);
     setHasBeenReset(true);
     setResetKey(prev => prev + 1);
-  };
+  }, []);
+  
+  const refetch = useCallback(() => {
+    const savedResponses = getTerminalResponses(queryClient, practiceId, version);
+    queryClient.setQueryData(queryKey, savedResponses);
+    setData(savedResponses);
+  }, [queryClient, practiceId, version, queryKey]);
 
   return {
     data,
     isLoading: false,
     error: null,
-    refetch: () => {
-      const savedResponses = localStorageHelpers.getJSON<GitCommandResponse[]>(terminalKeyFor(practiceId, version), []);
-      queryClient.setQueryData(terminalKeys.practice(practiceId), savedResponses);
-      setData(savedResponses);
-    },
+    refetch,
     reset
   };
 };
@@ -213,71 +351,80 @@ export const useGitEngine = (practiceId?: string, version?: number) => {
   const { data: responses = [], reset: resetTerminalResponses } = useTerminalResponses(practiceId, version);
   const queryClient = useQueryClient();
   
-  const syncFromServer = async () => {
+  const stateKey = useMemo(() => gitKeys.state(practiceId), [practiceId]);
+  const terminalKey = useMemo(() => terminalKeys.practice(practiceId), [practiceId]);
+  const versionKey = useMemo(() => practiceId ? ['git', 'state-version', practiceId] as const : null, [practiceId]);
+  const isGoalBuilder = useMemo(() => practiceId === 'goal-builder', [practiceId]);
+  
+  const syncFromServer = useCallback(async () => {
     if (!practiceId) return;
-    const server = await PracticeRepoStateService.get(practiceId);
-    queryClient.setQueryData(gitKeys.state(practiceId), server.state);
-    queryClient.setQueryData(['git', 'state-version', practiceId], server.version || 0);
-    const mockResponses: GitCommandResponse[] = server.state ? [
-      {
-        repositoryState: server.state,
-        command: 'sync-from-server',
-        success: true,
-        output: 'Synchronized repository state from server'
+    
+    try {
+      const server = await PracticeRepoStateService.get(practiceId);
+      const mockResponses: GitCommandResponse[] = server.state ? [
+        {
+          repositoryState: server.state,
+          command: 'sync-from-server',
+          success: true,
+          output: 'Synchronized repository state from server'
+        }
+      ] : [];
+      
+      queryClient.setQueryData(stateKey, server.state);
+      if (versionKey) {
+        queryClient.setQueryData(versionKey, server.version || 0);
       }
-    ] : [];
-    queryClient.setQueryData(terminalKeys.practice(practiceId), mockResponses);
-    localStorageHelpers.setJSON(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId), mockResponses);
-  };
+      queryClient.setQueryData(terminalKey, mockResponses);
+      
+      localStorageHelpers.setJSON(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId), mockResponses);
+    } catch (error) {}
+  }, [practiceId, queryClient, stateKey, terminalKey, versionKey]);
 
-  const clearAllData = async () => {
+  const clearAllData = useCallback(async () => {
     if (practiceId) {
       try {
         await PracticeRepoStateService.remove(practiceId);
-      } catch (e) {
-        console.warn('Practice repo state remove failed (continuing):', e);
-      }
+      } catch (e) {}
     }
 
     if (practiceId && version) {
       localStorageHelpers.version.clearVersionedData(practiceId, version);
     } else {
       localStorageHelpers.removeItem(terminalKeyFor(practiceId));
-      localStorageHelpers.removeItem(practiceId ? LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(practiceId) : LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS('global'));
+      const commitGraphKey = practiceId 
+        ? LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(practiceId)
+        : LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS('global');
+      localStorageHelpers.removeItem(commitGraphKey);
     }
-    
     localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.REPOSITORY_STATE);
 
-    queryClient.setQueryData(terminalKeys.practice(practiceId), []);
-    queryClient.setQueryData(gitKeys.state(practiceId), null);
+    queryClient.setQueryData(terminalKey, []);
+    queryClient.setQueryData(stateKey, null);
     
-    if (practiceId === 'goal-builder') {
+    if (isGoalBuilder) {
       queryClient.setQueryData(terminalKeys.goal, []);
     }
     
-    if (practiceId) {
-      queryClient.setQueryData(['git', 'state-version', practiceId], 0);
+    if (versionKey) {
+      queryClient.setQueryData(versionKey, 0);
     }
     
-    queryClient.removeQueries({ queryKey: terminalKeys.practice(practiceId) });
-    queryClient.removeQueries({ queryKey: gitKeys.state(practiceId) });
+    queryClient.removeQueries({ queryKey: terminalKey });
+    queryClient.removeQueries({ queryKey: stateKey });
     
-    if (practiceId === 'goal-builder') {
+    if (isGoalBuilder) {
       queryClient.removeQueries({ queryKey: terminalKeys.goal });
-    }
-    
-    queryClient.setQueryData(gitKeys.state(practiceId), null);
-    
-    if (practiceId === 'goal-builder') {
-      queryClient.setQueryData(terminalKeys.goal, []);
+      queryClient.invalidateQueries({ queryKey: terminalKeys.goal });
     }
     
     resetTerminalResponses();
-    
-    if (practiceId === 'goal-builder') {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.goal });
-    }
-  };
+  }, [practiceId, version, queryClient, stateKey, terminalKey, versionKey, isGoalBuilder, resetTerminalResponses]);
   
-  return { responses, runCommand, isRunning, clearAllData, syncFromServer };
+  return { 
+    responses, 
+    runCommand, 
+    isRunning, 
+    clearAllData, 
+    syncFromServer 
+  };
 };

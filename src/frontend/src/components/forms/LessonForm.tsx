@@ -246,29 +246,26 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
         savedLesson = await createLessonMutation.mutateAsync(formData);
       }
       
-      if (practices.length > 0) {
+      const practicesToCreate = practices.filter((practice) => !practice.id);
+
+      if (practicesToCreate.length > 0) {
         const lessonIdToUse = savedLesson?.id || lessonId;
         if (lessonIdToUse) {          
           const { PracticesService } = await import('@/services/practice');
           
           const savedPractices = [];
-          for (const practice of practices) {
-            let savedPractice;
-            if (practice.id && isEdit) {
-              savedPractice = await PracticesService.update(practice.id, practice);
-            } else {
-              savedPractice = await PracticesService.create({
-                ...practice,
-                lessonId: lessonIdToUse
-              });
-            }
+          for (const practice of practicesToCreate) {
+            const savedPractice = await PracticesService.create({
+              ...practice,
+              lessonId: lessonIdToUse
+            });
             savedPractices.push(savedPractice);
           }
           
           queryClient.invalidateQueries({ queryKey: practiceKeys.all });
           queryClient.invalidateQueries({ queryKey: lessonKeys.all });
           
-          toast.success(`Lesson and ${savedPractices.length} practice(s) saved successfully!`);
+          toast.success(`Lesson and ${savedPractices.length} new practice(s) saved successfully!`);
           
           setPractices([]);
         }

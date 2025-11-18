@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LessonFormData, LessonUpdateData } from '@/lib/schemas/lesson';
 import { LessonsService } from '@/services/lessons';
 import { lessonKeys, analyticsKeys } from '@/lib/react-query/query-keys';
+import { LOCALSTORAGE_KEYS, localStorageHelpers } from '@/constants/localStorage';
 
 const lessonsApi = {
   getAll: async () => {
@@ -97,14 +98,67 @@ export const useUpdateLesson = () => {
   });
 };
 
+const clearLessonLocalStorage = async (lessonId: string) => {
+  try {
+    const lessonData = await LessonsService.getAll({ id: lessonId, includePractices: true });
+    
+    if (lessonData?.data?.[0]?.practices && Array.isArray(lessonData.data[0].practices)) {
+      lessonData.data[0].practices.forEach((practice: any) => {
+        if (practice.id) {
+          const practiceId = practice.id.toString();
+          
+          localStorageHelpers.version.clearVersionedData(practiceId);
+          
+          const goalBuilderIds = [
+            `goal-builder-${practiceId}`,
+            ...Array.from({ length: 10 }, (_, i) => `goal-builder-${practiceId}-${i}`)
+          ];
+          
+          goalBuilderIds.forEach(goalBuilderId => {
+            localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(goalBuilderId));
+            localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(goalBuilderId));
+          });
+        }
+      });
+    }
+    
+    if (typeof window !== 'undefined') {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith(`git-terminal-responses:goal-builder-new-${lessonId}-`) ||
+          key.startsWith(`git-commit-graph-node-positions:goal-builder-new-${lessonId}-`)
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    }
+  } catch (error) {}
+};
+
 export const useDeleteLesson = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: lessonsApi.delete,
-    onSuccess: () => {
+    mutationFn: async (lessonId: string) => {
+      await clearLessonLocalStorage(lessonId);
+      return lessonsApi.delete(lessonId);
+    },
+    onSuccess: (_, lessonId) => {
       queryClient.invalidateQueries({ queryKey: lessonKeys.all });
       queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
+      
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && (
+            key[0] === 'terminal-responses' ||
+            key[0] === 'git'
+          );
+        }
+      });
     },
   });
 };

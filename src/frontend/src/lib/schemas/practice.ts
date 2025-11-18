@@ -25,7 +25,7 @@ export const practiceValidationRuleSchema = z.object({
 
 export const practiceTagSchema = z.object({
   name: z.string().min(1, 'Tag name is required'),
-  color: z.string().optional(),
+  color: z.string().optional().default('#3B82F6'),
 });
 
 export const practiceSchema = z.object({

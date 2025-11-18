@@ -247,7 +247,7 @@ export default function PracticeSidebar({
                     key={tag.id}
                     variant="secondary"
                     className="text-xs"
-                    style={{ backgroundColor: tag.color + '20', color: tag.color }}
+                    style={{ backgroundColor: (tag.color || '#3B82F6') + '20', color: tag.color || '#3B82F6' }}
                   >
                     {tag.name}
                   </Badge>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form';
@@ -13,6 +13,7 @@ export interface TerminalLine {
 
 interface TerminalProps {
     practiceId?: string;
+    version?: number;
     // Preview mode props
     previewLines?: TerminalLine[];
     isTyping?: boolean;
@@ -20,12 +21,13 @@ interface TerminalProps {
     className?: string;
 }
 
-function Terminal({ practiceId, previewLines, isTyping = false, showInput = true, className = '' }: TerminalProps) {
+function Terminal({ practiceId, version, previewLines, isTyping = false, showInput = true, className = '' }: TerminalProps) {
     const t = useTranslations('terminal');
     const outputRef = useRef<HTMLDivElement>(null);
     const isPreviewMode = previewLines !== undefined;
     
-    const { responses, runCommand } = useGitEngine(practiceId);
+    const { responses, runCommand } = useGitEngine(practiceId, version);
+    
     const [isFocused, setIsFocused] = useState(false);
     const { register, handleSubmit, reset, watch } = useForm<{ command: string }>();
     const commandValue = watch('command') ?? '';
@@ -52,11 +54,16 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
         handleBlur(event);
     }, [handleBlur, rhfOnBlur]);
 
-    const displayResponses = isPreviewMode ? previewLines.map(line => ({
-        command: line.type === 'command' ? line.text : undefined,
-        output: line.type !== 'command' ? line.text : '',
-        success: line.type === 'success' ? true : line.type === 'error' ? false : undefined
-    })) : responses;
+    const displayResponses = useMemo(() => {
+        if (isPreviewMode) {
+            return previewLines.map(line => ({
+                command: line.type === 'command' ? line.text : undefined,
+                output: line.type !== 'command' ? line.text : '',
+                success: line.type === 'success' ? true : line.type === 'error' ? false : undefined
+            }));
+        }
+        return responses;
+    }, [isPreviewMode, previewLines, responses]);
 
     const onSubmit = async ({ command }: { command: string }) => {
         if (isPreviewMode) return;
@@ -66,7 +73,7 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (isPreviewMode) return;
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -80,7 +87,7 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
         }
     }, [displayResponses]);
 
-    const getLineColor = (type: 'command' | 'success' | 'error' | 'output') => {
+    const getLineColor = useCallback((type: 'command' | 'success' | 'error' | 'output') => {
         switch (type) {
             case 'command':
                 return 'text-blue-600 dark:text-blue-400';
@@ -91,7 +98,7 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
             default:
                 return 'text-gray-700 dark:text-gray-300';
         }
-    };
+    }, []);
 
     return (
         <div className={`w-full font-mono rounded-lg flex overflow-hidden flex-col h-[300px] bg-terminal-bg border border-[var(--border)] shadow-sm ${className}`}>
@@ -157,7 +164,7 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
             {showInput && !isPreviewMode && (
                 <>
                 <div className="px-4 py-2 bg-gray-50 dark:bg-[#161b22] border-t border-[var(--border)]">
-                    <form onKeyDown={handleKeyDown} className="flex items-center">
+                    <div onKeyDown={handleKeyDown} className="flex items-center" tabIndex={-1}>
                         <span className="text-gray-500 dark:text-gray-400 mr-4 text-sm">$</span>
                         <div className="relative flex-1">
                             <span
@@ -194,7 +201,7 @@ function Terminal({ practiceId, previewLines, isTyping = false, showInput = true
                                 onBlur={handleInputBlur}
                             />
                         </div>
-                    </form>
+                    </div>
                 </div>
                 </>
             )}

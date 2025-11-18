@@ -132,11 +132,13 @@ export const useSavePractice = () => {
       formData: PracticeFormData; 
       lessonId: string; 
       practiceId?: string; 
-    }) => {
+    }) => { 
       if (practiceId) {
-        return updateMutation.mutateAsync({ id: practiceId, data: formData });
+        const result = await updateMutation.mutateAsync({ id: practiceId, data: formData });
+        return result;
       } else {
-        return createMutation.mutateAsync({ ...formData, lessonId });
+        const result = await createMutation.mutateAsync({ ...formData, lessonId });
+        return result;
       }
     },
     onSuccess: (result, variables) => {
@@ -148,7 +150,7 @@ export const useSavePractice = () => {
       }
     },
     onError: (error) => {
-      console.error('Failed to save practice:', error);
+      console.error('[useSavePractice] onError:', error);
     },
   });
 };

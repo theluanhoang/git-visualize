@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Lightbulb } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Practice } from '@/services/practices';
 import PracticeSidebar from './PracticeSidebar';
 import FeedbackSystem from './FeedbackSystem';
 import PracticeHintModal from './PracticeHintModal';
 import Terminal from '@/components/common/terminal/Terminal';
 import CommitGraph from '@/components/common/CommitGraph';
-import { useGitEngine } from '@/lib/react-query/hooks/use-git-engine';
-import { useRepositoryState } from '@/lib/react-query/hooks/use-git-engine';
+import { useGitEngine, useRepositoryState } from '@/lib/react-query/hooks/use-git-engine';
 import { useValidatePractice } from '@/lib/react-query/hooks/use-practices';
 import { IRepositoryState } from '@/types/git';
 import { useFeedback } from '@/hooks/use-feedback';
@@ -21,7 +19,7 @@ import { useInitialGuidance } from '@/hooks/use-initial-guidance';
 import { useVersionCheck } from '@/hooks/use-version-check';
 import VersionResetDialog from '@/components/common/VersionResetDialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { terminalKeys, practiceKeys } from '@/lib/react-query/query-keys';
+import { terminalKeys, practiceKeys, gitKeys } from '@/lib/react-query/query-keys';
 import { localStorageHelpers, LOCALSTORAGE_KEYS } from '@/constants/localStorage';
 import { toast } from 'sonner';
 
@@ -41,8 +39,8 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
   const [hasShownInitialGuidance, setHasShownInitialGuidance] = useState(false);
   const queryClient = useQueryClient();
 
-  const { clearAllData, syncFromServer } = useGitEngine(practice.id, practice.version);
-  const { data: repoState } = useRepositoryState(practice.id);
+  const { clearAllData } = useGitEngine(practice.id, practice.version);
+  const { data: repoState } = useRepositoryState(practice.id, practice.version);
   const { mutate: validatePractice, isPending: isValidating } = useValidatePractice();
 
   const {
@@ -60,18 +58,20 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
     },
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const stateKey = gitKeys.state(practice.id);
+    queryClient.invalidateQueries({ queryKey: stateKey });
+    queryClient.refetchQueries({ queryKey: stateKey });
+    
     if (practice.goalRepositoryState) {
       queryClient.invalidateQueries({ queryKey: terminalKeys.goal });
-      queryClient.invalidateQueries({ queryKey: practiceKeys.detail(practice.id) });
     }
-  }, [practice.goalRepositoryState, queryClient, practice.id]);
-
-  React.useEffect(() => {
+    
     queryClient.invalidateQueries({ queryKey: practiceKeys.detail(practice.id) });
-  }, [queryClient, practice.id]);
+  }, [practice.id, practice.version, practice.goalRepositoryState, queryClient]);
 
-  React.useEffect(() => {
+  // Handle visibility change
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         queryClient.invalidateQueries({ queryKey: practiceKeys.detail(practice.id) });
@@ -96,7 +96,7 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
   const { errorFeedback, showErrorFeedback, closeErrorFeedback, resetErrorFeedback } = useErrorFeedback();
   const { guidanceState, showInitialGuidance, closeInitialGuidance } = useInitialGuidance();
 
-  const checkForPracticeUpdates = async () => {
+  const checkForPracticeUpdates = useCallback(async () => {
     try {
       const hasTerminalData = localStorageHelpers.getItem(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practice.id)) !== null;
       const hasCommitGraphData = localStorageHelpers.getItem(LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(practice.id)) !== null;
@@ -120,29 +120,25 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
       console.warn('Failed to check for updates:', error);
     }
     return false;
-  };
+  }, [practice.id, practice.version, queryClient]);
 
-  const checkStepCompletion = () => {
-    return completedSteps.has(currentStep);
-  };
-
-  const handleNextStep = async () => {
+  const handleNextStep = useCallback(async () => {
     await checkForPracticeUpdates();
     if (currentStep < (practice.instructions?.length || 0)) {
       setCurrentStep(prev => prev + 1);
       setShowHint(false);
     }
-  };
+  }, [checkForPracticeUpdates, currentStep, practice.instructions?.length]);
 
-  const handlePrevStep = async () => {
+  const handlePrevStep = useCallback(async () => {
     await checkForPracticeUpdates();
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);
       setShowHint(false);
     }
-  };
+  }, [checkForPracticeUpdates, currentStep]);
 
-  const handleComplete = async () => {
+  const handleComplete = useCallback(async () => {
     await checkForPracticeUpdates();
     if (!isCompleted) {
       setIsCompleted(true);
@@ -155,9 +151,9 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
         }
       );
     }
-  };
+  }, [checkForPracticeUpdates, isCompleted, practice.title, showEpicSuccess, onComplete]);
 
-  const handleReset = async () => {
+  const handleReset = useCallback(async () => {
     setCurrentStep(1);
     setIsCompleted(false);
     setCompletedSteps(new Set());
@@ -165,14 +161,14 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
     setHasShownInitialGuidance(false);
     resetErrorFeedback();
     await clearAllData();
-  };
+  }, [clearAllData, resetErrorFeedback]);
 
-  const handleViewGoal = async () => {
+  const handleViewGoal = useCallback(async () => {
     await checkForPracticeUpdates();
     setIsGoalModalOpen(true);
-  };
+  }, [checkForPracticeUpdates]);
 
-  const handleValidate = async () => {
+  const handleValidate = useCallback(async () => {
     await checkForPracticeUpdates();
     
     if (!repoState) {
@@ -246,12 +242,12 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
         }
       }
     );
-  };
+  }, [checkForPracticeUpdates, repoState, hasShownInitialGuidance, practice.title, practice.id, practice.goalRepositoryState, showInitialGuidance, setHasShownInitialGuidance, validatePractice, triggerValidationCelebration, showErrorFeedback]);
 
-  const handleToggleHint = async () => {
+  const handleToggleHint = useCallback(async () => {
     await checkForPracticeUpdates();
-    setShowHint(!showHint);
-  };
+    setShowHint(prev => !prev);
+  }, [checkForPracticeUpdates]);
 
   return (
     <div className="flex flex-col lg:flex-row bg-background border border-border rounded-xl shadow-sm overflow-hidden min-h-[calc(100vh-12rem)]">
@@ -281,7 +277,7 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
             <CommitGraph practiceId={practice.id} practiceVersion={practice.version} title="Practice Graph" />
           </div>
           <div className="flex-1">
-            <Terminal practiceId={practice.id} />
+            <Terminal practiceId={practice.id} version={practice.version} />
           </div>
         </div>
       </div>
@@ -319,12 +315,17 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
           <div className="relative w-full max-w-5xl bg-background border border-border rounded-lg shadow-xl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-border">
               <h2 className="text-lg font-semibold">Goal Graph</h2>
-              <button onClick={() => setIsGoalModalOpen(false)} className="px-2 py-1 text-sm border rounded hover:bg-muted">Close</button>
+              <button 
+                onClick={() => setIsGoalModalOpen(false)} 
+                className="px-2 py-1 text-sm border rounded hover:bg-muted"
+              >
+                Close
+              </button>
             </div>
             <div className="p-4" style={{ height: '70vh' }}>
               <div className="h-full">
                 <CommitGraph 
-                  key={`goal-${JSON.stringify(practice.goalRepositoryState)}`}
+                  key={`goal-${practice.id}-${practice.version}`}
                   dataSource="goal" 
                   goalRepositoryState={practice.goalRepositoryState as IRepositoryState} 
                   showClearButton={false} 

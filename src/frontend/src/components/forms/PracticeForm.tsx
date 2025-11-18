@@ -1,26 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { practiceSchema, PracticeFormData } from '@/lib/schemas/practice';
+import { practiceSchema, PracticeFormData, PracticeTagData } from '@/lib/schemas/practice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, GripVertical, Lightbulb, Target, Terminal as TerminalIcon, Tag, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CommitGraph from '@/components/common/CommitGraph';
 import Terminal from '@/components/common/terminal/Terminal';
-import { useTerminalResponses, useGitEngine, gitEngineApi } from '@/lib/react-query/hooks/use-git-engine';
+import { useTerminalResponses, useGitEngine } from '@/lib/react-query/hooks/use-git-engine';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePracticeFormSubmission } from '@/lib/react-query/hooks/use-practice';
-import { terminalKeys, gitKeys, goalKeys } from '@/lib/react-query/query-keys';
+import { terminalKeys } from '@/lib/react-query/query-keys';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { LOCALSTORAGE_KEYS, localStorageHelpers } from '@/constants/localStorage';
+import { GitCommandResponse } from '@/types/git';
+import { usePracticeFormState } from '@/hooks/use-practice-form-state';
+import {
+  buildGoalStateFromResponses,
+  buildGoalStateFromCommands,
+  extractGitCommandsFromResponses,
+} from '@/lib/utils/goal-state-builder';
+import { rebuildRepositoryStateFromCommands } from '@/lib/utils/repository-state-builder';
 
 
 interface PracticeFormProps {
@@ -37,7 +46,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
   const queryClient = useQueryClient();
   const t = useTranslations('practice.form');
   
-  const { handleSave, isSaving, error, isSuccess } = usePracticeFormSubmission();
+  const { handleSave, isSaving } = usePracticeFormSubmission();
 
   const {
     register,
@@ -46,9 +55,10 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
     watch,
     setValue,
     formState: { errors, isSubmitting }
-  } = useForm<PracticeFormData>({
+  } = useForm({
     resolver: zodResolver(practiceSchema),
     defaultValues: {
+      id: initialData?.id || practiceId || undefined,
       title: initialData?.title || '',
       scenario: initialData?.scenario || '',
       difficulty: initialData?.difficulty ?? 1,
@@ -58,7 +68,10 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
       instructions: initialData?.instructions || [],
       hints: initialData?.hints || [],
       expectedCommands: initialData?.expectedCommands || [],
-      tags: initialData?.tags || []
+      tags: (initialData?.tags || []).map((tag) => ({
+        name: tag.name,
+        color: tag.color ?? '#3B82F6'
+      }))
     }
   });
 
@@ -72,160 +85,85 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
     name: 'hints'
   });
 
-
   const { fields: tagFields, append: appendTag, remove: removeTag } = useFieldArray({
     control,
     name: 'tags'
   });
 
-  const goalBuilderId = practiceIndex !== undefined 
-    ? `goal-builder-${practiceIndex}` 
-    : (practiceId || 'goal-builder');
+  const uniqueId = useMemo(() => Date.now(), []);
+  const goalBuilderId = useMemo(() => {
+    if (practiceId) {
+      return practiceIndex !== undefined 
+        ? `goal-builder-${practiceId}-${practiceIndex}` 
+        : `goal-builder-${practiceId}`;
+    }
+    return practiceIndex !== undefined 
+      ? `goal-builder-new-${lessonId}-${practiceIndex}-${uniqueId}` 
+      : `goal-builder-new-${lessonId}-${uniqueId}`;
+  }, [practiceId, practiceIndex, lessonId, uniqueId]);
   
   const { data: goalResponses = [] } = useTerminalResponses(goalBuilderId);
   const { clearAllData } = useGitEngine(goalBuilderId);
 
-  const [goalPreviewState, setGoalPreviewState] = useState<any>(() => {
-    return initialData?.goalRepositoryState || null;
+  const { goalPreviewState, resetKey, isResetting, resetGoalBuilder } = usePracticeFormState({
+    goalBuilderId,
+    practiceId,
+    initialData,
+    goalResponses,
   });
-  const [resetKey, setResetKey] = useState(0);
-  const [isResetting, setIsResetting] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [hasBeenReset, setHasBeenReset] = useState(false);
   
-  
-  React.useEffect(() => {
-    if (initialData?.goalRepositoryState && !goalPreviewState && !isResetting && !hasBeenReset) {
-      setGoalPreviewState(initialData.goalRepositoryState);
-    }
-  }, [initialData?.goalRepositoryState, goalPreviewState, isResetting, hasBeenReset]);
-  
-  React.useEffect(() => {
-    if (!hasBeenReset) {
-      const last = goalResponses[goalResponses.length - 1];
-      if (last?.repositoryState) {
-        setGoalPreviewState(last.repositoryState);
-      }
-    }
-  }, [goalResponses, hasBeenReset]);
 
-  React.useEffect(() => {
-    if (initialData?.goalRepositoryState && !isInitialized) {
-      const goalState = initialData.goalRepositoryState;
-      queryClient.setQueryData(['git', 'state', goalBuilderId], goalState);
-      setGoalPreviewState(goalState);
-      
-      const expectedCommands = initialData.expectedCommands || [];
-      if (expectedCommands.length > 0) {
-        const mockResponses = expectedCommands.map((cmd: any, index: number) => ({
-          command: cmd.command,
-          success: true,
-          output: cmd.expectedOutput || 'Command executed successfully',
-          repositoryState: null,
-        }));
-        
-        const cacheKey = terminalKeys.practice(goalBuilderId);
-        queryClient.setQueryData(cacheKey, mockResponses);
-        
-        try {
-          const localStorageKey = goalBuilderId 
-            ? LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(goalBuilderId)
-            : LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES('global');
-          localStorageHelpers.setJSON(localStorageKey, mockResponses);
-        } catch (error) {
-          console.warn('Failed to save to localStorage:', error);
-        }
-      }
-      setIsInitialized(true);
-    }
-  }, [initialData?.goalRepositoryState, initialData?.expectedCommands, isInitialized, queryClient, goalBuilderId]);
-
-  React.useEffect(() => {
-    if (goalPreviewState === null) {
-      queryClient.setQueryData(terminalKeys.goal, []);
-    }
-  }, [goalPreviewState, queryClient]);
-
-
-  const prevPracticeIdRef = React.useRef(practiceId);
-  React.useEffect(() => {
-    const prevPracticeId = prevPracticeIdRef.current;
+  const onSubmit = useCallback(async (data: PracticeFormData) => {
+    const cacheKey = terminalKeys.practice(goalBuilderId);
+    const localStorageKey = goalBuilderId 
+      ? LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(goalBuilderId)
+      : LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES('global');
     
-    if (prevPracticeId !== practiceId && !initialData?.goalRepositoryState) {
-      if (!practiceId) {
-        setGoalPreviewState(null);
-        queryClient.setQueryData(terminalKeys.goal, []);
-        queryClient.setQueryData(terminalKeys.practice(goalBuilderId), []);
-        queryClient.setQueryData(['git', 'state', goalBuilderId], null);
-        setIsInitialized(false);
-        setResetKey(prev => prev + 1);
-        
-        try {
-          localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(goalBuilderId));
-          localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(goalBuilderId));
-          localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.GOAL_COMMIT_GRAPH_POSITIONS);
-          localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.GOAL_TERMINAL_RESPONSES);
-        } catch (error) {
-          console.warn('Failed to clear localStorage:', error);
-        }
-      }
-      
-      prevPracticeIdRef.current = practiceId;
-    }
-  }, [practiceId, initialData?.goalRepositoryState, queryClient, goalBuilderId]);
-
-  React.useEffect(() => {
-    return () => {
-      const shouldClear = !practiceId && !initialData?.goalRepositoryState;
-      
-      if (shouldClear) {
-        queryClient.setQueryData(terminalKeys.goal, []);
-        queryClient.setQueryData(terminalKeys.practice(goalBuilderId), []);
-        queryClient.setQueryData(['git', 'state', goalBuilderId], null);
-      }
-    };
-  }, [practiceId, initialData?.goalRepositoryState, queryClient, goalBuilderId]);
-
-  const onSubmit = async (data: PracticeFormData) => {
+    const cachedResponses = queryClient.getQueryData<GitCommandResponse[]>(cacheKey) || [];
+    const storedResponses = localStorageHelpers.getJSON<GitCommandResponse[]>(localStorageKey, []);
+    const latestResponses = cachedResponses.length > 0 ? cachedResponses : storedResponses;
+    
     try {
-      const commands = goalResponses.map(r => r.command).filter(Boolean) as string[];
-      const gitLines = commands.filter(c => c.startsWith('git '));
-      const mapped = gitLines.map((cmd, i) => ({ command: cmd, order: i + 1, isRequired: true }));
+      const responsesToUse = latestResponses.length > 0 ? latestResponses : goalResponses;
+      const mapped = extractGitCommandsFromResponses(responsesToUse);
 
-      let goalState = goalPreviewState;
+      let goalState = await buildGoalStateFromResponses(responsesToUse, goalPreviewState);
       
-      if (mapped.length > 0) {
-        try {
-          const commandsToExecute = mapped.map(cmd => cmd.command);
-          const buildResult = await gitEngineApi.buildGoalRepositoryState(commandsToExecute);
-          goalState = buildResult.repositoryState;
-        } catch (error) {
-          console.warn('Failed to rebuild goal state:', error);
-          if (!goalState && goalResponses.length > 0) {
-            const lastResponse = goalResponses[goalResponses.length - 1];
-            if (lastResponse?.repositoryState) {
-              goalState = lastResponse.repositoryState;
-            }
-          }
-        }
-      } else if (!goalState && goalResponses.length > 0) {
-        const lastResponse = goalResponses[goalResponses.length - 1];
-        if (lastResponse?.repositoryState) {
-          goalState = lastResponse.repositoryState;
-        }
+      if (!goalState && mapped.length > 0) {
+        goalState = await buildGoalStateFromCommands(mapped);
       }
 
       const formDataWithGoal: PracticeFormData = { 
-        ...data, 
+        ...data,
+        id: data.id || practiceId || initialData?.id,
         expectedCommands: mapped, 
         goalRepositoryState: goalState 
       };
 
       if (lessonId && practiceId) {
         const result = await handleSave(formDataWithGoal, lessonId, practiceId);
-        if (result?.goalRepositoryState) {
-          setGoalPreviewState(result.goalRepositoryState);
+        
+        if (result) {
+          if (goalResponses.length > 0) {
+            queryClient.setQueryData(cacheKey, goalResponses);
+            try {
+              localStorageHelpers.setJSON(localStorageKey, goalResponses);
+            } catch (error) {}
+          } else if (result.expectedCommands && result.expectedCommands.length > 0) {
+            try {
+              const { responses } = await rebuildRepositoryStateFromCommands(result.expectedCommands);
+              queryClient.setQueryData(cacheKey, responses);
+              localStorageHelpers.setJSON(localStorageKey, responses);
+            } catch (error) {}
+          }
+          
+          if (result.goalRepositoryState) {
+            queryClient.setQueryData(['git', 'state', goalBuilderId], result.goalRepositoryState);
+          }
         }
+        
+        const syncedPractice = result ?? formDataWithGoal;
+        onSave?.(syncedPractice);
         toast.success('Practice updated successfully!');
       } else {
         onSave(formDataWithGoal);
@@ -244,82 +182,62 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
         toast.error('Có lỗi xảy ra khi lưu practice. Vui lòng thử lại.');
       }
     }
-  };
+  }, [lessonId, practiceId, goalBuilderId, goalResponses, goalPreviewState, handleSave, onSave, queryClient]);
 
-  const addInstruction = () => {
+  const addInstruction = useCallback(() => {
     appendInstruction({ content: '', order: instructionFields.length + 1 });
-  };
+  }, [appendInstruction, instructionFields.length]);
 
-  const addHint = () => {
+  const addHint = useCallback(() => {
     appendHint({ content: '', order: hintFields.length + 1 });
-  };
+  }, [appendHint, hintFields.length]);
 
-  const addTag = () => {
+  const addTag = useCallback(() => {
     appendTag({ name: '', color: '#3B82F6' });
-  };
+  }, [appendTag]);
 
-  const resetGoalBuilder = async () => {
-    setIsResetting(true);
-    setHasBeenReset(true); 
-    
-    try {
-      localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(goalBuilderId));
-      localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(goalBuilderId));
-      localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.GOAL_COMMIT_GRAPH_POSITIONS);
-      localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.GOAL_TERMINAL_RESPONSES);
-    } catch (error) {
-      console.warn('Failed to clear localStorage:', error);
-    }
-    
-    await clearAllData();
-    
-    setGoalPreviewState(null);
-    queryClient.setQueryData(terminalKeys.goal, []);
-    queryClient.setQueryData(terminalKeys.practice(goalBuilderId), []);
-    queryClient.setQueryData(['git', 'state', goalBuilderId], null);
-    queryClient.removeQueries({ queryKey: gitKeys.goalState([]) });
-    queryClient.removeQueries({ queryKey: gitKeys.all });
-    queryClient.removeQueries({ queryKey: goalKeys.all });
-    
-    queryClient.setQueryData(['git', 'state', goalBuilderId], null);
-    
-    setResetKey(prev => prev + 1);
-    setIsInitialized(false);
-    
-    // Use requestAnimationFrame for better performance
-    requestAnimationFrame(() => {
-      if (typeof window !== 'undefined') {
-        const resetFunction = (window as Window & { resetGoalCommitGraphView?: () => void }).resetGoalCommitGraphView;
-        if (resetFunction && typeof resetFunction === 'function') {
-          resetFunction();
-        }
-      }
-      setIsResetting(false);
-    });
-  };
+  const handleResetGoalBuilder = useCallback(async () => {
+    await resetGoalBuilder(clearAllData);
+  }, [resetGoalBuilder, clearAllData]);
 
   type TabId = 'basic' | 'instructions' | 'commands' | 'hints' | 'tags';
   
-  const tabs: { id: TabId; label: string; icon: typeof Target }[] = [
+  const tabs = useMemo<{ id: TabId; label: string; icon: typeof Target }[]>(() => [
     { id: 'basic', label: t('basic'), icon: Target },
     { id: 'instructions', label: t('instructions'), icon: Target },
     { id: 'commands', label: t('commands'), icon: TerminalIcon },
     { id: 'hints', label: t('hints'), icon: Lightbulb },
     { id: 'tags', label: t('tags'), icon: Tag }
-  ];
+  ], [t]);
+
+  const handleFormSubmit = useCallback(
+    handleSubmit(
+      async (data: PracticeFormData) => {
+        await onSubmit(data);
+      },
+      () => {}
+    ),
+    [handleSubmit, onSubmit]
+  );
 
   return (
-    <div className="space-y-6 w-full p-6 rounded-full max-w-full">
+    <form 
+      onSubmit={handleFormSubmit}
+      className="space-y-6 w-full p-6 rounded-full max-w-full"
+    >
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">{t('title')}</h2>
           <p className="text-sm text-muted-foreground">{t('scenario')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" type="button" onClick={onCancel}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting || isSaving}>
+          <Button 
+            type="submit"
+            disabled={isSubmitting || isSaving}
+          >
             {isSubmitting || isSaving ? 'Saving...' : t('save')}
           </Button>
         </div>
@@ -330,6 +248,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === tab.id
@@ -447,7 +366,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Step-by-Step Instructions</CardTitle>
-                  <Button onClick={addInstruction} size="sm">
+                  <Button type="button" onClick={addInstruction} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Instruction
                   </Button>
@@ -474,6 +393,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                         )}
                       </div>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeInstruction(index)}
@@ -507,9 +427,10 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Goal Builder</CardTitle>
                   <Button 
+                    type="button"
                     variant="outline" 
                     size="sm" 
-                    onClick={resetGoalBuilder}
+                    onClick={handleResetGoalBuilder}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -521,7 +442,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                     <div className="min-w-0 overflow-hidden" key={`commit-graph-${resetKey}`}>
                       <CommitGraph 
                         dataSource="goal" 
-                        goalRepositoryState={goalPreviewState} 
+                        goalRepositoryState={goalPreviewState || undefined} 
                         showClearButton={false} 
                         title="Goal Preview"
                         practiceId={goalBuilderId}
@@ -548,7 +469,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Helpful Hints</CardTitle>
-                  <Button onClick={addHint} size="sm">
+                  <Button type="button" onClick={addHint} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Hint
                   </Button>
@@ -575,6 +496,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                         )}
                       </div>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeHint(index)}
@@ -607,7 +529,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Tags</CardTitle>
-                  <Button onClick={addTag} size="sm">
+                  <Button type="button" onClick={addTag} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Tag
                   </Button>
@@ -641,6 +563,21 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                             />
                           </div>
                         </div>
+                        {watch(`tags.${index}.name`) && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Preview:</span>
+                            <Badge
+                              variant="outline"
+                              className="text-xs"
+                              style={{
+                                borderColor: watch(`tags.${index}.color`) || '#3B82F6',
+                                color: watch(`tags.${index}.color`) || '#3B82F6'
+                              }}
+                            >
+                              {watch(`tags.${index}.name`) || 'Tag name'}
+                            </Badge>
+                          </div>
+                        )}
                         {errors.tags?.[index]?.name && (
                           <p className="text-sm text-red-500">
                             {errors.tags[index]?.name?.message}
@@ -648,6 +585,7 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                         )}
                       </div>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeTag(index)}
@@ -670,6 +608,6 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </form>
   );
 }

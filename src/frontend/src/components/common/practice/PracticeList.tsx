@@ -121,7 +121,7 @@ export default function PracticeList({
                       key={tag.id} 
                       variant="outline" 
                       className="text-xs"
-                      style={{ borderColor: tag.color, color: tag.color }}
+                      style={{ borderColor: tag.color || '#3B82F6', color: tag.color || '#3B82F6' }}
                     >
                       {tag.name}
                     </Badge>
