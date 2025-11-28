@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { generateCommitId } from './git-engine.utils';
-import { ETypeGitObject, GitCommandResponse, ICommit, IRepositoryState, PracticeValidationResponse, RepositoryDifference } from './git-engine.interface';
+import { ETypeGitObject, FileStatus, GitCommandResponse, ICommit, IFileState, IRepositoryState, PracticeValidationResponse, RepositoryDifference } from './git-engine.interface';
 import { Practice } from '../practice/entities/practice.entity';
 
 @Injectable()
 export class GitEngineService {
     private repositoryState: IRepositoryState | null = null;
-    private knownCommands = ['clear', 'init', 'commit', 'branch', 'checkout', 'switch', 'status', 'log', 'tag'];
+    private knownCommands = ['clear', 'init', 'add', 'commit', 'branch', 'checkout', 'switch', 'status', 'log', 'tag', 'touch'];
 
     constructor(
         @InjectRepository(Practice)
@@ -29,6 +29,11 @@ export class GitEngineService {
 
     executeCommand(command: string): GitCommandResponse | null {
         const tokens = command.trim().split(/\s+/);
+
+        if (tokens[0] === 'touch') {
+            tokens.shift();
+            return this.touch(tokens);
+        }
 
         if (tokens[0] !== 'git') {
             return this.response(`${tokens[0]}: command not found`, false)
@@ -53,6 +58,8 @@ export class GitEngineService {
         switch (cmd as string) {
             case 'init':
                 return this.init();
+            case 'add':
+                return this.add(args);
             case 'status':
                 return this.status();
             case 'commit':
@@ -65,6 +72,8 @@ export class GitEngineService {
                 return this.switch(args);
             case 'clear':
                 return this.clear();
+            case 'touch':
+                return this.touch(args);
             default:
                 return this.response(`git: '${cmd}' not implemented yet`);
         }
@@ -80,23 +89,335 @@ export class GitEngineService {
 
     private init(): GitCommandResponse {
         let message = "Reinitialized existing Git repository";
-        let state = this.repositoryState;
         if (!this.repositoryState) {
-            state = {
+            const state: IRepositoryState = {
                 commits: [],
                 branches: [{ name: 'main', commitId: '' }],
                 tags: [],
-                head: { type: 'branch', ref: 'main', commitId: '' },
+                head: { type: 'branch' as const, ref: 'main', commitId: '' },
+                workingDirectory: [],
+                stagingArea: [],
             };
 
             this.setRepositoryState(state);
 
             message = "Initialized empty Git repository"
+        } else {
+            if (!this.repositoryState.workingDirectory) {
+                this.repositoryState.workingDirectory = [];
+            }
+            if (!this.repositoryState.stagingArea) {
+                this.repositoryState.stagingArea = [];
+            }
         }
 
         return {
             success: true,
             output: message,
+            repositoryState: this.repositoryState,
+        };
+    }
+
+    private add(args: string[]): GitCommandResponse {
+        if (!this.repositoryState) {
+            return this.response(
+                "fatal: not a git repository (or any of the parent directories): .git",
+                false
+            );
+        }
+
+        if (!this.repositoryState.workingDirectory) {
+            this.repositoryState.workingDirectory = [];
+        }
+        if (!this.repositoryState.stagingArea) {
+            this.repositoryState.stagingArea = [];
+        }
+
+        const workingDir = this.repositoryState.workingDirectory;
+        const stagingArea = this.repositoryState.stagingArea;
+
+        let allFlag = false;
+        let updateFlag = false;
+        let patchFlag = false;
+        const files: string[] = [];
+
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            switch (arg) {
+                case '-A':
+                case '--all':
+                    allFlag = true;
+                    break;
+                case '-u':
+                case '--update':
+                    updateFlag = true;
+                    break;
+                case '-p':
+                case '--patch':
+                    patchFlag = true;
+                    break;
+                case '.':
+                    files.push('.');
+                    break;
+                default:
+                    if (!arg.startsWith('-')) {
+                        files.push(arg);
+                    }
+                    break;
+            }
+        }
+
+        if (allFlag) {
+            return this.addAllFiles(workingDir, stagingArea);
+        }
+
+        if (updateFlag) {
+            return this.addUpdatedFiles(workingDir, stagingArea);
+        }
+
+        if (patchFlag) {
+            return this.addAllModifiedFiles(workingDir, stagingArea, true);
+        }
+
+        if (files.length === 0) {
+            return this.response("Nothing specified, nothing added.\nhint: Use 'git add <file>...' to include in what will be committed", false);
+        }
+
+        const filesToAdd: string[] = [];
+        for (const file of files) {
+            if (file === '.') {
+                const allFiles = workingDir
+                    .filter(f => f.status === FileStatus.UNTRACKED || f.status === FileStatus.MODIFIED)
+                    .map(f => f.path);
+                filesToAdd.push(...allFiles);
+            } else {
+                filesToAdd.push(file);
+            }
+        }
+
+        return this.addSpecificFiles(workingDir, stagingArea, filesToAdd);
+    }
+
+    private touch(args: string[]): GitCommandResponse {
+        if (!this.repositoryState) {
+            return this.response(
+                "fatal: not a git repository (or any of the parent directories): .git",
+                false
+            );
+        }
+
+        if (args.length === 0) {
+            return this.response("touch: missing file operand", false);
+        }
+
+        if (!this.repositoryState.workingDirectory) {
+            this.repositoryState.workingDirectory = [];
+        }
+        if (!this.repositoryState.stagingArea) {
+            this.repositoryState.stagingArea = [];
+        }
+
+        const workingDir = this.repositoryState.workingDirectory;
+        const stagedFiles = this.repositoryState.stagingArea;
+
+        const created: string[] = [];
+        const updated: string[] = [];
+
+        for (const filePath of args) {
+            if (!filePath) {
+                continue;
+            }
+
+            let file = workingDir.find(f => f.path === filePath);
+
+            if (!file) {
+                file = { path: filePath, status: FileStatus.UNTRACKED };
+                workingDir.push(file);
+                created.push(filePath);
+                continue;
+            }
+
+            switch (file.status) {
+                case FileStatus.DELETED:
+                    file.status = FileStatus.UNTRACKED;
+                    created.push(filePath);
+                    break;
+                case FileStatus.UNTRACKED:
+                    // Already untracked, nothing else to do
+                    break;
+                case FileStatus.UNMODIFIED:
+                    file.status = FileStatus.MODIFIED;
+                    updated.push(filePath);
+                    break;
+                case FileStatus.STAGED:
+                    file.status = FileStatus.MODIFIED;
+                    // ensure it's still tracked in staging set; removing lets Git show unstaged changes
+                    const index = stagedFiles.indexOf(file.path);
+                    if (index !== -1) {
+                        stagedFiles.splice(index, 1);
+                    }
+                    updated.push(filePath);
+                    break;
+                case FileStatus.MODIFIED:
+                default:
+                    // already marked modified; no change
+                    break;
+            }
+        }
+
+        if (created.length === 0 && updated.length === 0) {
+            return this.response('');
+        }
+
+        const segments: string[] = [];
+        if (created.length > 0) {
+            segments.push(`created ${created.length} file(s): ${created.join(', ')}`);
+        }
+        if (updated.length > 0) {
+            segments.push(`updated ${updated.length} file(s): ${updated.join(', ')}`);
+        }
+
+        return this.response(segments.join('\n'));
+    }
+
+    private addAllFiles(workingDir: IFileState[], stagingArea: string[]): GitCommandResponse {
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        for (const file of workingDir) {
+            if (file.status === FileStatus.UNTRACKED || file.status === FileStatus.MODIFIED) {
+                if (!stagingArea.includes(file.path)) {
+                    stagingArea.push(file.path);
+                    added.push(file.path);
+                }
+                file.status = FileStatus.STAGED;
+            } else if (file.status === FileStatus.DELETED) {
+                if (!stagingArea.includes(file.path)) {
+                    stagingArea.push(file.path);
+                }
+                if (!removed.includes(file.path)) {
+                    removed.push(file.path);
+                }
+            }
+        }
+
+        for (const stagedPath of [...stagingArea]) {
+            const file = workingDir.find(f => f.path === stagedPath);
+            if (!file) {
+                const index = stagingArea.indexOf(stagedPath);
+                if (index !== -1) {
+                    stagingArea.splice(index, 1);
+                    if (!removed.includes(stagedPath)) {
+                        removed.push(stagedPath);
+                    }
+                }
+            }
+        }
+
+        return this.formatAddResponse(added, removed);
+    }
+
+    private addUpdatedFiles(workingDir: IFileState[], stagingArea: string[]): GitCommandResponse {
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        for (const file of workingDir) {
+            if (file.status === FileStatus.MODIFIED) {
+                if (!stagingArea.includes(file.path)) {
+                    stagingArea.push(file.path);
+                    added.push(file.path);
+                }
+                file.status = FileStatus.STAGED;
+            } else if (file.status === FileStatus.DELETED) {
+                if (!stagingArea.includes(file.path)) {
+                    stagingArea.push(file.path);
+                }
+                if (!removed.includes(file.path)) {
+                    removed.push(file.path);
+                }
+            }
+        }
+
+        return this.formatAddResponse(added, removed);
+    }
+
+    private addAllModifiedFiles(workingDir: IFileState[], stagingArea: string[], isPatch: boolean): GitCommandResponse {
+        const added: string[] = [];
+
+        for (const file of workingDir) {
+            if (file.status === FileStatus.MODIFIED || file.status === FileStatus.UNTRACKED) {
+                if (!stagingArea.includes(file.path)) {
+                    stagingArea.push(file.path);
+                    added.push(file.path);
+                }
+                file.status = FileStatus.STAGED;
+            }
+        }
+
+        if (isPatch && added.length === 0) {
+            return this.response("No changes.", false);
+        }
+
+        return this.formatAddResponse(added, []);
+    }
+
+    private addSpecificFiles(workingDir: IFileState[], stagingArea: string[], filePaths: string[]): GitCommandResponse {
+        const added: string[] = [];
+
+        for (const filePath of filePaths) {
+            const file = workingDir.find(f => f.path === filePath);
+            
+            if (file) {
+                if (file.status === FileStatus.UNTRACKED || file.status === FileStatus.MODIFIED) {
+                    if (!stagingArea.includes(filePath)) {
+                        stagingArea.push(filePath);
+                        added.push(filePath);
+                    }
+                    file.status = FileStatus.STAGED;
+                } else if (file.status === FileStatus.DELETED) {
+                    if (!stagingArea.includes(filePath)) {
+                        stagingArea.push(filePath);
+                    }
+                    if (!added.includes(filePath)) {
+                        added.push(filePath);
+                    }
+                } else if (file.status === FileStatus.STAGED) {
+                }
+            } else {
+                const newFile: IFileState = {
+                    path: filePath,
+                    status: FileStatus.UNTRACKED
+                };
+                workingDir.push(newFile);
+                stagingArea.push(filePath);
+                newFile.status = FileStatus.STAGED;
+                added.push(filePath);
+            }
+        }
+
+        return this.formatAddResponse(added, []);
+    }
+
+    private formatAddResponse(added: string[], removed: string[]): GitCommandResponse {
+        if (added.length === 0 && removed.length === 0) {
+            return {
+                success: true,
+                output: '',
+                repositoryState: this.repositoryState,
+            };
+        }
+
+        const lines: string[] = [];
+        if (added.length > 0) {
+            lines.push(...added.map(f => `add '${f}'`));
+        }
+        if (removed.length > 0) {
+            lines.push(...removed.map(f => `rm '${f}'`));
+        }
+
+        return {
+            success: true,
+            output: lines.join('\n'),
             repositoryState: this.repositoryState,
         };
     }
@@ -114,22 +435,79 @@ export class GitEngineService {
         const branchName =
             head && head.type === "branch" ? head.ref : "(detached HEAD)";
 
+        const workingDir = this.repositoryState.workingDirectory || [];
+        const stagingArea = this.repositoryState.stagingArea || [];
+
+        const stagedFiles: string[] = [];
+        const unstagedModified: string[] = [];
+        const unstagedDeleted: string[] = [];
+        const untrackedFiles: string[] = [];
+
+        for (const file of workingDir) {
+            if (stagingArea.includes(file.path)) {
+                stagedFiles.push(file.path);
+            } else if (file.status === FileStatus.MODIFIED) {
+                unstagedModified.push(file.path);
+            } else if (file.status === FileStatus.DELETED) {
+                unstagedDeleted.push(file.path);
+            } else if (file.status === FileStatus.UNTRACKED) {
+                untrackedFiles.push(file.path);
+            }
+        }
+
+        let output = `On branch ${branchName}\n`;
+
         if (this.repositoryState.commits.length === 0) {
-            return {
-                success: true,
-                output:
-                    `On branch ${branchName}\n\n` +
-                    `No commits yet\n\n` +
-                    `nothing to commit (create/copy files and use "git add" to track)`,
-                repositoryState: this.repositoryState,
-            };
+            output += `\nNo commits yet\n`;
+        }
+
+        if (stagedFiles.length > 0) {
+            output += `\nChanges to be committed:\n`;
+            output += `  (use "git restore --staged <file>..." to unstage)\n`;
+            for (const file of stagedFiles) {
+                const fileState = workingDir.find(f => f.path === file);
+                if (fileState?.status === FileStatus.DELETED) {
+                    output += `\tdeleted:    ${file}\n`;
+                } else {
+                    output += `\tnew file:    ${file}\n`;
+                }
+            }
+        }
+
+        if (unstagedModified.length > 0 || unstagedDeleted.length > 0) {
+            output += `\nChanges not staged for commit:\n`;
+            output += `  (use "git add <file>..." to update what will be committed)\n`;
+            output += `  (use "git restore <file>..." to discard changes in working directory)\n`;
+            for (const file of unstagedModified) {
+                output += `\tmodified:   ${file}\n`;
+            }
+            for (const file of unstagedDeleted) {
+                output += `\tdeleted:    ${file}\n`;
+            }
+        }
+
+        if (untrackedFiles.length > 0) {
+            output += `\nUntracked files:\n`;
+            output += `  (use "git add <file>..." to include in what will be committed)\n`;
+            for (const file of untrackedFiles) {
+                output += `\t${file}\n`;
+            }
+        }
+
+        if (stagedFiles.length === 0 && unstagedModified.length === 0 && 
+            unstagedDeleted.length === 0 && untrackedFiles.length === 0) {
+            if (this.repositoryState.commits.length === 0) {
+                output += `\nnothing to commit (create/copy files and use "git add" to track)`;
+            } else {
+                output += `\nnothing to commit, working tree clean`;
+            }
+        } else if (stagedFiles.length > 0) {
+            output += `\n`;
         }
 
         return {
             success: true,
-            output:
-                `On branch ${branchName}\n` +
-                `nothing to commit, working tree clean`,
+            output: output.trim(),
             repositoryState: this.repositoryState,
         };
     }
@@ -171,13 +549,36 @@ export class GitEngineService {
             return this.response(`fatal: current branch '${branchName}' not found`, false);
         }
 
+        const allowEmpty = args.includes('--allow-empty') || args.includes('--allow-empty-message');
+
+        const stagingArea = this.repositoryState.stagingArea || [];
+        const workingDir = this.repositoryState.workingDirectory || [];
+
+        if (!allowEmpty && stagingArea.length === 0) {
+            const hasChanges = workingDir.some(f => 
+                f.status === FileStatus.MODIFIED || 
+                f.status === FileStatus.UNTRACKED || 
+                f.status === FileStatus.DELETED
+            );
+
+            if (!hasChanges) {
+                return this.response(
+                    "nothing to commit, working tree clean",
+                    false
+                );
+            }
+
+            return this.response(
+                "nothing to commit (use \"git add\" to track files)",
+                false
+            );
+        }
+
         const messageIndex = args.indexOf("-m");
         if (messageIndex === -1 || !args[messageIndex + 1]) {
             return this.response("error: commit message not provided (use -m \"msg\")", false);
         }
 
-        // Require quoted message after -m to match expected training UX
-        // Accept either double or single quotes, and support spaces inside
         const firstToken = args[messageIndex + 1];
         const quoteChar = firstToken.startsWith('"') ? '"' : (firstToken.startsWith("'") ? "'" : null);
         if (!quoteChar) {
@@ -204,32 +605,66 @@ export class GitEngineService {
             message = message.slice(1, -1);
         }
 
-        const commitId = generateCommitId();
-        const newCommit: ICommit = {
-            id: commitId,
-            message,
-            author: {
-                name: "You",
-                email: "<you@example.com>",
-                date: new Date()
-            },
-            committer: {
-                name: "You",
-                email: "<you@example.com>",
-                date: new Date()
-            },
-            parents: branch.commitId ? [branch.commitId] : [],
-            type: ETypeGitObject.COMMIT,
-            branch: branch.name
-        };
+        const isAmend = args.includes('--amend');
+        let commitId: string;
+        let newCommit: ICommit;
 
-        this.repositoryState.commits.push(newCommit);
+        if (isAmend && this.repositoryState.commits.length > 0) {
+            const lastCommit = this.repositoryState.commits[this.repositoryState.commits.length - 1];
+            commitId = lastCommit.id; 
+            newCommit = {
+                ...lastCommit,
+                message: message || lastCommit.message,
+            };
+            this.repositoryState.commits[this.repositoryState.commits.length - 1] = newCommit;
+        } else {
+            commitId = generateCommitId();
+            newCommit = {
+                id: commitId,
+                message,
+                author: {
+                    name: "You",
+                    email: "<you@example.com>",
+                    date: new Date()
+                },
+                committer: {
+                    name: "You",
+                    email: "<you@example.com>",
+                    date: new Date()
+                },
+                parents: branch.commitId ? [branch.commitId] : [],
+                type: ETypeGitObject.COMMIT,
+                branch: branch.name
+            };
+            this.repositoryState.commits.push(newCommit);
+        }
+
         branch.commitId = commitId;
         this.repositoryState.head = { type: "branch", ref: branchName, commitId: branch.commitId };
 
+        const stagedFiles = stagingArea.slice();
+        for (const filePath of stagedFiles) {
+            const file = workingDir.find(f => f.path === filePath);
+            if (file) {
+                if (file.status === FileStatus.DELETED) {
+                    const index = workingDir.indexOf(file);
+                    if (index !== -1) {
+                        workingDir.splice(index, 1);
+                    }
+                } else {
+                    file.status = FileStatus.UNMODIFIED;
+                }
+            }
+        }
+        stagingArea.length = 0;
+
+        const output = isAmend 
+            ? `[${branchName} ${commitId.substring(0, 7)}] ${message} (amend)`
+            : `[${branchName} ${commitId.substring(0, 7)}] ${message}`;
+
         return {
             success: true,
-            output: `[${branchName} ${commitId.substring(0, 7)}] ${message}`,
+            output,
             repositoryState: this.repositoryState,
         };
     }
@@ -511,7 +946,11 @@ export class GitEngineService {
             };
 
         } catch (error) {
-            console.error('Error validating practice:', error);
+            console.error('Error validating practice:', {
+                practiceId,
+                error,
+                payload: userRepositoryState,
+            });
             return {
                 success: false,
                 isCorrect: false,
@@ -651,6 +1090,79 @@ export class GitEngineService {
             });
         }
 
+        // Compare working directory
+        const goalWorking = goalState.workingDirectory || [];
+        const userWorking = userState.workingDirectory || [];
+
+        const goalWorkingMap = new Map(goalWorking.map(f => [f.path, f.status]));
+        const userWorkingMap = new Map(userWorking.map(f => [f.path, f.status]));
+
+        for (const [path, status] of goalWorkingMap.entries()) {
+            if (!userWorkingMap.has(path)) {
+                differences.push({
+                    type: 'working_directory',
+                    field: 'missing_file',
+                    expected: path,
+                    actual: null,
+                    description: `Expected working tree to contain "${path}" with status ${status}`
+                });
+            } else {
+                const userStatus = userWorkingMap.get(path);
+                if (userStatus !== status) {
+                    differences.push({
+                        type: 'working_directory',
+                        field: 'status_mismatch',
+                        expected: `${path}:${status}`,
+                        actual: `${path}:${userStatus}`,
+                        description: `File "${path}" expected status ${status} but found ${userStatus}`
+                    });
+                }
+            }
+        }
+
+        for (const [path] of userWorkingMap.entries()) {
+            if (!goalWorkingMap.has(path)) {
+                differences.push({
+                    type: 'working_directory',
+                    field: 'extra_file',
+                    expected: null,
+                    actual: path,
+                    description: `Found unexpected file "${path}" in working tree`
+                });
+            }
+        }
+
+        // Compare staging area
+        const goalStaging = goalState.stagingArea || [];
+        const userStaging = userState.stagingArea || [];
+
+        const goalStagingSet = new Set(goalStaging);
+        const userStagingSet = new Set(userStaging);
+
+        for (const path of goalStagingSet) {
+            if (!userStagingSet.has(path)) {
+                differences.push({
+                    type: 'staging_area',
+                    field: 'missing_staged_file',
+                    expected: path,
+                    actual: null,
+                    description: `Expected "${path}" to be staged`
+                });
+            }
+        }
+
+        for (const path of userStagingSet) {
+            if (!goalStagingSet.has(path)) {
+                differences.push({
+                    type: 'staging_area',
+                    field: 'extra_staged_file',
+                    expected: null,
+                    actual: path,
+                    description: `Found staged file "${path}" not expected in goal state`
+                });
+            }
+        }
+
         return differences;
     }
 
@@ -663,7 +1175,7 @@ export class GitEngineService {
 
         // Calculate score based on the number of differences
         // This is a simplified scoring algorithm
-        const totalChecks = 4; // commits, branches, head, tags
+        const totalChecks = 6; // commits, branches, head, tags, working dir, staging
         const penaltyPerDifference = 100 / (totalChecks * 2); // Max 50% penalty per category
         
         let penalty = 0;

@@ -12,7 +12,7 @@ export const sortCommandsByOrder = <T extends { order?: number }>(commands: T[])
 export const filterGitCommands = (commands: Array<{ command?: string }>): string[] => {
   return commands
     .map((cmd) => cmd.command)
-    .filter((cmd): cmd is string => Boolean(cmd && cmd.startsWith('git ')));
+    .filter((cmd): cmd is string => Boolean(cmd && (cmd.startsWith('git ') || cmd.startsWith('touch '))));
 };
 
 export const rebuildRepositoryStateFromCommands = async (
@@ -23,7 +23,7 @@ export const rebuildRepositoryStateFromCommands = async (
   const mockResponses: GitCommandResponse[] = [];
 
   for (const cmd of commands) {
-    if (cmd.command && cmd.command.startsWith('git ')) {
+    if (cmd.command && (cmd.command.startsWith('git ') || cmd.command.startsWith('touch '))) {
       try {
         const response = await gitEngineApi.executeGitCommand(cmd.command, currentState);
         if (response.repositoryState) {

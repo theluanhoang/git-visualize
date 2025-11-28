@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Practice } from '@/services/practices';
 import PracticeSidebar from './PracticeSidebar';
 import FeedbackSystem from './FeedbackSystem';
 import PracticeHintModal from './PracticeHintModal';
 import Terminal from '@/components/common/terminal/Terminal';
 import CommitGraph from '@/components/common/CommitGraph';
+import GitStatusPanel from '@/components/common/GitStatusPanel';
+import FileExplorer from '@/components/common/FileExplorer';
 import { useGitEngine, useRepositoryState } from '@/lib/react-query/hooks/use-git-engine';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useValidatePractice } from '@/lib/react-query/hooks/use-practices';
 import { IRepositoryState } from '@/types/git';
 import { useFeedback } from '@/hooks/use-feedback';
@@ -37,11 +40,25 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [hasShownInitialGuidance, setHasShownInitialGuidance] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const hasAutoShownRef = useRef(false);
   const queryClient = useQueryClient();
 
-  const { clearAllData } = useGitEngine(practice.id, practice.version);
+  const { clearAllData, responses } = useGitEngine(practice.id, practice.version);
   const { data: repoState } = useRepositoryState(practice.id, practice.version);
   const { mutate: validatePractice, isPending: isValidating } = useValidatePractice();
+
+  useEffect(() => {
+    if (hasAutoShownRef.current) return;
+    
+    const hasGitInit = responses.some(response => 
+      response.command?.trim().toLowerCase() === 'git init' && response.success
+    );
+    if (hasGitInit) {
+      setIsSidebarOpen(true);
+      hasAutoShownRef.current = true;
+    }
+  }, [responses]);
 
   const {
     showResetDialog,
@@ -159,6 +176,8 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
     setCompletedSteps(new Set());
     setShowHint(false);
     setHasShownInitialGuidance(false);
+    setIsSidebarOpen(false);
+    hasAutoShownRef.current = false;
     resetErrorFeedback();
     await clearAllData();
   }, [clearAllData, resetErrorFeedback]);
@@ -250,9 +269,9 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
   }, [checkForPracticeUpdates]);
 
   return (
-    <div className="flex flex-col lg:flex-row bg-background border border-border rounded-xl shadow-sm overflow-hidden min-h-[calc(100vh-12rem)]">
+    <div className="flex flex-col lg:flex-row bg-background border border-border rounded-xl shadow-sm overflow-hidden min-h-[calc(100vh-12rem)] relative">
       {}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative z-0">
         {}
         <div className="border-b border-border p-4">
             <div className="flex items-center justify-between">
@@ -272,32 +291,68 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
         </div>
 
         {}
-        <div className="flex-1 flex flex-col gap-4 p-4">
-          <div className="flex-1">
-            <CommitGraph practiceId={practice.id} practiceVersion={practice.version} title="Practice Graph" />
+        <div className="flex-1 flex gap-4 p-4 relative items-stretch min-h-[520px]">
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col gap-4 min-w-0 h-full">
+            <div className="flex-1">
+              <CommitGraph practiceId={practice.id} practiceVersion={practice.version} title="Practice Graph" />
+            </div>
+            <div className="flex-1 min-h-0">
+              <Terminal practiceId={practice.id} version={practice.version} />
+            </div>
           </div>
-          <div className="flex-1">
-            <Terminal practiceId={practice.id} version={practice.version} />
+
+          <div 
+            className={`relative flex flex-col gap-4 transition-all duration-300 ease-in-out z-0 h-full ${
+              isSidebarOpen ? 'w-80' : 'w-0'
+            }`}
+            style={{ zIndex: 0 }}
+          >
+            <div className={`flex flex-col gap-4 min-w-[320px] h-full transition-opacity duration-300 ${
+              isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none overflow-hidden'
+            }`}>
+              <FileExplorer 
+                practiceId={practice.id} 
+                version={practice.version}
+              />
+              {repoState && (
+                <GitStatusPanel repositoryState={repoState} />
+              )}
+            </div>
+            
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="absolute top-1/2 -translate-y-1/2 left-0 -translate-x-1/2 z-10 p-2.5 bg-background border-2 border-border rounded-lg shadow-lg hover:bg-muted hover:border-primary transition-all duration-300 ease-in-out flex items-center justify-center"
+              title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              {isSidebarOpen ? (
+                <PanelRightClose className="w-5 h-5 text-foreground" />
+              ) : (
+                <PanelRightOpen className="w-5 h-5 text-foreground" />
+              )}
+            </button>
           </div>
         </div>
       </div>
 
       {}
-      <PracticeSidebar
-        practice={practice}
-        currentStep={currentStep}
-        onNextStep={handleNextStep}
-        onPrevStep={handlePrevStep}
-        onComplete={handleComplete}
-        onReset={handleReset}
-        isCompleted={isCompleted}
-        showHint={showHint}
-        onToggleHint={handleToggleHint}
-        onShowHintModal={() => setShowHintModal(true)}
-        onViewGoal={handleViewGoal}
-        onValidate={handleValidate}
-        isValidating={isValidating}
-      />
+      <div className="relative z-10">
+        <PracticeSidebar
+          practice={practice}
+          currentStep={currentStep}
+          onNextStep={handleNextStep}
+          onPrevStep={handlePrevStep}
+          onComplete={handleComplete}
+          onReset={handleReset}
+          isCompleted={isCompleted}
+          showHint={showHint}
+          onToggleHint={handleToggleHint}
+          onShowHintModal={() => setShowHintModal(true)}
+          onViewGoal={handleViewGoal}
+          onValidate={handleValidate}
+          isValidating={isValidating}
+        />
+      </div>
 
       {}
       <FeedbackSystem feedback={feedback} onClose={hideFeedback} />

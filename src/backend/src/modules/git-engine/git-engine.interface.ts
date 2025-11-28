@@ -21,7 +21,7 @@ export interface PracticeValidationResponse {
 export type DifferenceValue = string | number | boolean | null | string[];
 
 export interface RepositoryDifference {
-  type: 'commit' | 'branch' | 'tag' | 'head';
+  type: 'commit' | 'branch' | 'tag' | 'head' | 'working_directory' | 'staging_area';
   field: string;
   expected: DifferenceValue;
   actual: DifferenceValue;
@@ -87,9 +87,25 @@ export type IHead =
   | { type: "commit"; ref: string } 
   | null;
 
+export enum FileStatus {
+  UNTRACKED = 'untracked',
+  MODIFIED = 'modified',
+  DELETED = 'deleted',
+  STAGED = 'staged',
+  UNMODIFIED = 'unmodified'
+}
+
+export interface IFileState {
+  path: string;
+  status: FileStatus;
+  content?: string; // Optional content for tracking file changes
+}
+
 export interface IRepositoryState {
   commits: ICommit[];
   branches: IBranch[];
   tags: ITag[];
   head: IHead;
+  workingDirectory?: IFileState[]; // Files in working directory
+  stagingArea?: string[]; // File paths in staging area (index)
 }

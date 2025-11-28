@@ -291,10 +291,23 @@ SUPPORTED GIT COMMANDS (use ONLY these commands in expectedCommands):
 - git switch [branch] - Switch to existing branch
 - git switch -c [branch] - Create and switch to new branch
 - git clear - Clear repository state (for resetting)
+- git add <file> - Stage a specific file
+- git add . - Stage all changes in the current directory (and subdirectories)
+- git add -A - Stage all changes in the repository (including deletions/renames)
+- git add --all - Same as -A (stage additions, modifications, deletions)
+- git add -u - Stage modifications/deletions of tracked files (ignore new files)
+- git add -p - Stage changes interactively (our engine stages all modified files for this flag)
+- touch <file> - Create a new file (untracked) or mark tracked files as modified
+
+GOAL REPOSITORY STATE REQUIREMENTS:
+- goalRepositoryState MUST always include: commits, branches, tags, head, workingDirectory, stagingArea
+- workingDirectory is an array of objects { "path": "file", "status": "untracked|modified|deleted|staged|unmodified" } (use [] when clean)
+- stagingArea is an array of file paths that are currently staged (use [] when clean)
+- Ensure the final state represents a clean repository unless the practice requires staged/unstaged changes
 
 STEP 1: Start your response with a JSON comment containing the lesson metadata and practice data. Use this EXACT format:
 
-<!--JSON {"title":"Concise Lesson Title","slug":"concise-lesson-title","description":"Short summary of the lesson within 220 characters.","practices":[{"title":"Practice Title","scenario":"Practice scenario","difficulty":2,"estimatedTime":15,"instructions":[{"content":"Step 1 instruction","order":1}],"hints":[{"content":"Helpful hint"}],"expectedCommands":[{"command":"git init","order":1,"isRequired":true,"expectedOutput":"Initialized empty Git repository"},{"command":"git commit -m \"Initial commit\"","order":2,"isRequired":true,"expectedOutput":"Commit created successfully"}],"validationRules":[{"type":"min_commands","value":"2"}],"tags":[{"name":"git-basics"}],"goalRepositoryState":{"commits":[{"id":"a1b2c3d4e5f6","type":"COMMIT","parents":[],"author":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"committer":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"message":"Initial commit","branch":"main"}],"branches":[{"name":"main","commitId":"a1b2c3d4e5f6"}],"tags":[],"head":{"type":"branch","ref":"main","commitId":"a1b2c3d4e5f6"}}]} -->
+<!--JSON {"title":"Concise Lesson Title","slug":"concise-lesson-title","description":"Short summary of the lesson within 220 characters.","practices":[{"title":"Practice Title","scenario":"Practice scenario","difficulty":2,"estimatedTime":15,"instructions":[{"content":"Step 1 instruction","order":1}],"hints":[{"content":"Helpful hint"}],"expectedCommands":[{"command":"git init","order":1,"isRequired":true,"expectedOutput":"Initialized empty Git repository"},{"command":"git add .","order":2,"isRequired":true,"expectedOutput":"All changes staged"},{"command":"git commit -m \"Initial commit\"","order":3,"isRequired":true,"expectedOutput":"[main abc1234] Initial commit"}],"validationRules":[{"type":"min_commands","value":"3"}],"tags":[{"name":"git-basics"}],"goalRepositoryState":{"commits":[{"id":"a1b2c3d4e5f6","type":"COMMIT","parents":[],"author":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"committer":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"message":"Initial commit","branch":"main"}],"branches":[{"name":"main","commitId":"a1b2c3d4e5f6"}],"tags":[],"head":{"type":"branch","ref":"main","commitId":"a1b2c3d4e5f6"},"workingDirectory":[],"stagingArea":[]}}]} -->
 
 STRICT JSON RULES (MANDATORY):
 - Output MUST be valid JSON according to RFC 8259.

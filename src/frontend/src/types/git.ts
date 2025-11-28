@@ -68,16 +68,27 @@ export type IHead =
   | { type: "commit"; ref: string }
   | null;
 
+export enum FileStatus {
+  UNTRACKED = 'untracked',
+  MODIFIED = 'modified',
+  DELETED = 'deleted',
+  STAGED = 'staged',
+  UNMODIFIED = 'unmodified'
+}
+
+export interface IFileState {
+  path: string;
+  status: FileStatus;
+  content?: string;
+}
+
 export interface IRepositoryState {
   commits: ICommit[];
   branches: IBranch[];
   tags: ITag[];
   head: IHead;
-
-    workingDirectory: IFileName[];
-  stagingArea: IFileName[];
-  stagedDeletions: IFileName[];
-  repositoryFiles: IFileName[];
+  workingDirectory?: IFileState[];
+  stagingArea?: string[];
 }
 
 export type IFileName = string;
