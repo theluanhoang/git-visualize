@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { PracticeAggregateService } from './services/practice-aggregate.service';
 import { CreatePracticeDTO } from './dto/create-practice.dto';
 import { UpdatePracticeDTO } from './dto/update-practice.dto';
@@ -6,6 +6,8 @@ import { GetPracticesQueryDto } from './dto/get-practices.query.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RepositoryStateDto } from './dto/repository-state.dto';
 import { PracticeRepositoryStateService } from './services/practice-repository-state.service';
+import { PracticeAiAssistantService } from './services/practice-ai-assistant.service';
+import { AiAssistantRequestBodyDto, AiAssistantResponseDto } from './dto/ai-assistant.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ForAdmin } from '../auth/decorators/roles.decorator';
@@ -17,6 +19,7 @@ export class PracticeController {
     constructor(
         private readonly practiceAggregateService: PracticeAggregateService,
         private readonly practiceRepoStateService: PracticeRepositoryStateService,
+        private readonly practiceAiAssistantService: PracticeAiAssistantService,
     ) {}
 
     @Get()
@@ -118,5 +121,41 @@ export class PracticeController {
     ) {
         const userId = req.user.sub;
         await this.practiceRepoStateService.remove(id, userId);
+    }
+
+    @Post(':id/ai-assistant')
+    @UsePipes(new ValidationPipe({ 
+        whitelist: true, 
+        forbidNonWhitelisted: false,
+        transform: true,
+        skipMissingProperties: false,
+        skipNullProperties: false,
+        skipUndefinedProperties: false,
+    }))
+    @ApiOperation({ 
+        summary: '🤖 Trợ lý AI – Hỗ trợ Thực hành Git',
+        description: 'Nhận câu hỏi từ người học và trả lời dựa trên trạng thái Git hiện tại'
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Phản hồi từ AI Assistant',
+        type: AiAssistantResponseDto
+    })
+    @ApiResponse({ status: 400, description: 'Invalid input' })
+    @ApiResponse({ status: 404, description: 'Practice not found' })
+    @ApiResponse({ status: 500, description: 'Internal server error' })
+    async getAiAssistantResponse(
+        @Param('id') id: string,
+        @Body() body: AiAssistantRequestBodyDto,
+    ): Promise<AiAssistantResponseDto> {
+        try {
+            return await this.practiceAiAssistantService.getAiResponse({
+                ...body,
+                practiceId: id,
+            });
+        } catch (error: any) {
+            console.error('AI Assistant error:', error);
+            throw error;
+        }
     }
 }

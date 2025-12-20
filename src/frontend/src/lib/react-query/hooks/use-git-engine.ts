@@ -151,7 +151,23 @@ export const useExecuteGitCommand = (practiceId?: string, version?: number) => {
           .then((res) => {
             queryClient.setQueryData(currentVersionKey, res.version);
           })
-          .catch(() => {
+          .catch(async (error) => {
+            // Nếu có version conflict, fetch lại server version và retry
+            if (error?.response?.data?.message?.includes('Version conflict') || 
+                error?.message?.includes('Version conflict')) {
+              try {
+                const serverState = await PracticeRepoStateService.get(currentPracticeId);
+                queryClient.setQueryData(currentVersionKey, serverState.version);
+                // Retry với server version mới
+                const retryRes = await PracticeRepoStateService.upsert(currentPracticeId, { 
+                  state: data.repositoryState, 
+                  version: serverState.version 
+                });
+                queryClient.setQueryData(currentVersionKey, retryRes.version);
+              } catch (retryError) {
+                console.warn('Failed to sync repository state version:', retryError);
+              }
+            }
           });
       }
     },
@@ -205,7 +221,23 @@ export const useRepositoryState = (practiceId?: string, version?: number) => {
                 .then((res) => {
                   queryClient.setQueryData(versionKey, res.version);
                 })
-                .catch(() => {
+                .catch(async (error) => {
+                  // Nếu có version conflict, fetch lại server version và retry
+                  if (error?.response?.data?.message?.includes('Version conflict') || 
+                      error?.message?.includes('Version conflict')) {
+                    try {
+                      const serverState = await PracticeRepoStateService.get(practiceId);
+                      queryClient.setQueryData(versionKey, serverState.version);
+                      // Retry với server version mới
+                      const retryRes = await PracticeRepoStateService.upsert(practiceId, { 
+                        state: rebuiltState, 
+                        version: serverState.version 
+                      });
+                      queryClient.setQueryData(versionKey, retryRes.version);
+                    } catch (retryError) {
+                      console.warn('Failed to sync repository state version:', retryError);
+                    }
+                  }
                 });
             }
             
@@ -395,6 +427,8 @@ export const useGitEngine = (practiceId?: string, version?: number) => {
         ? LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(practiceId)
         : LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS('global');
       localStorageHelpers.removeItem(commitGraphKey);
+      // Xóa AI Assistant chat history
+      localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.AI_ASSISTANT_CHAT(practiceId));
     }
     localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.REPOSITORY_STATE);
 

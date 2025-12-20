@@ -25,6 +25,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { terminalKeys, practiceKeys, gitKeys } from '@/lib/react-query/query-keys';
 import { localStorageHelpers, LOCALSTORAGE_KEYS } from '@/constants/localStorage';
 import { toast } from 'sonner';
+import AiAssistantDialog from './AiAssistantDialog';
 
 interface PracticeSessionProps {
   practice: Practice;
@@ -41,12 +42,26 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [hasShownInitialGuidance, setHasShownInitialGuidance] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const hasAutoShownRef = useRef(false);
   const queryClient = useQueryClient();
 
   const { clearAllData, responses } = useGitEngine(practice.id, practice.version);
   const { data: repoState } = useRepositoryState(practice.id, practice.version);
   const { mutate: validatePractice, isPending: isValidating } = useValidatePractice();
+
+  const lastResponse = useMemo(() => {
+    if (responses.length === 0) return null;
+    return responses[responses.length - 1];
+  }, [responses]);
+
+  const lastCommand = lastResponse?.command;
+  const lastError = lastResponse?.success === false ? lastResponse?.output : undefined;
+  
+  const actualRepoState = useMemo(() => {
+    if (!repoState) return null;
+    return (repoState as any).state || repoState;
+  }, [repoState]);
 
   useEffect(() => {
     if (hasAutoShownRef.current) return;
@@ -179,8 +194,14 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
     setIsSidebarOpen(false);
     hasAutoShownRef.current = false;
     resetErrorFeedback();
+    
+    const resetChatFunction = (window as any)[`resetAiAssistantChat_${practice.id}`];
+    if (resetChatFunction && typeof resetChatFunction === 'function') {
+      resetChatFunction();
+    }
+    
     await clearAllData();
-  }, [clearAllData, resetErrorFeedback]);
+  }, [clearAllData, resetErrorFeedback, practice.id]);
 
   const handleViewGoal = useCallback(async () => {
     await checkForPracticeUpdates();
@@ -298,7 +319,11 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
               <CommitGraph practiceId={practice.id} practiceVersion={practice.version} title="Practice Graph" />
             </div>
             <div className="flex-1 min-h-0">
-              <Terminal practiceId={practice.id} version={practice.version} />
+              <Terminal 
+                practiceId={practice.id} 
+                version={practice.version}
+                onAiAssistantClick={() => setIsAiAssistantOpen(true)}
+              />
             </div>
           </div>
 
@@ -425,6 +450,19 @@ export default function PracticeSession({ practice, onComplete, onExit }: Practi
         savedVersion={savedVersion || 1}
         onConfirm={handleConfirmReset}
         loading={isResetting}
+      />
+
+      <AiAssistantDialog
+        isOpen={isAiAssistantOpen}
+        onClose={() => setIsAiAssistantOpen(false)}
+        practiceId={practice.id}
+        repoState={actualRepoState}
+        lastCommand={lastCommand}
+        lastError={lastError}
+        version={practice.version}
+        onReset={() => {
+          // Reset handler sẽ được expose qua window object
+        }}
       />
     </div>
   );

@@ -140,6 +140,19 @@ export const PracticesService = {
     const res = await api.post(`/api/v1/practices/${id}/complete`);
     return res.data;
   },
+
+  async getAiAssistantResponse(
+    practiceId: string,
+    data: {
+      userCommand?: string;
+      repoState: any;
+      errorMessage?: string;
+      chatMessage: string;
+    }
+  ) {
+    const res = await api.post(`/api/v1/practices/${practiceId}/ai-assistant`, data);
+    return res.data;
+  },
 };
 
 export default PracticesService;

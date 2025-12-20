@@ -24,8 +24,12 @@ export class PracticeRepositoryStateService {
     const existing = await this.repo.findOne({ where: { practiceId, userId } });
     
     if (existing) {
+      // Nếu client version cũ hơn server version, tự động sync với server version
+      // Thay vì throw error, chúng ta sẽ merge hoặc overwrite với state mới
       if (clientVersion && clientVersion < existing.version) {
-        throw new Error(`Version conflict: client version ${clientVersion} is older than server version ${existing.version}`);
+        // Log warning nhưng vẫn cho phép update với state mới từ client
+        // Điều này giúp tránh mất dữ liệu khi có nhiều tab/window mở cùng lúc
+        console.warn(`Version conflict detected: client version ${clientVersion} is older than server version ${existing.version}. Updating with client state.`);
       }
       
       existing.repositoryState = repositoryState;

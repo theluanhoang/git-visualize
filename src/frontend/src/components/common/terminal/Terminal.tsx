@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form';
 import { useGitEngine } from '@/lib/react-query/hooks/use-git-engine';
 import { useCustomCaret } from '@/hooks';
+import { Bot } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface TerminalLine {
     type: 'command' | 'output' | 'success' | 'error';
@@ -19,9 +21,10 @@ interface TerminalProps {
     isTyping?: boolean;
     showInput?: boolean;
     className?: string;
+    onAiAssistantClick?: () => void;
 }
 
-function Terminal({ practiceId, version, previewLines, isTyping = false, showInput = true, className = '' }: TerminalProps) {
+function Terminal({ practiceId, version, previewLines, isTyping = false, showInput = true, className = '', onAiAssistantClick }: TerminalProps) {
     const t = useTranslations('terminal');
     const outputRef = useRef<HTMLDivElement>(null);
     const isPreviewMode = previewLines !== undefined;
@@ -105,10 +108,24 @@ function Terminal({ practiceId, version, previewLines, isTyping = false, showInp
             {}
             <div className="flex items-center justify-between px-4 py-2 bg-terminal-header border-b border-[var(--border)]">
                 <div className="text-sm text-gray-700 dark:text-gray-300">{t('title')}</div>
-                <div className="flex space-x-1">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="flex items-center gap-2">
+                    {onAiAssistantClick && !isPreviewMode && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onAiAssistantClick}
+                            className="h-7 px-2 text-xs gap-1.5 hover:bg-primary/10 hover:text-primary"
+                            title="🤖 Trợ lý AI – Hỗ trợ Thực hành Git"
+                        >
+                            <Bot className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">AI Assistant</span>
+                        </Button>
+                    )}
+                    <div className="flex space-x-1">
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
                 </div>
             </div>
 

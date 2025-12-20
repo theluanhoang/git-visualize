@@ -22,6 +22,8 @@ export const LOCALSTORAGE_KEYS = {
     GOAL_COMMIT_GRAPH_POSITIONS: 'git-goal-commit-graph-node-positions',
     REPOSITORY_STATE: 'git-repository-state',
     VERSION_METADATA: (practiceId: string) => `git-version-metadata:${practiceId}`,
+    AI_ASSISTANT_CHAT: (practiceId: string, version?: number) => 
+      version ? `ai-assistant-chat:${practiceId}:v${version}` : `ai-assistant-chat:${practiceId}`,
   },
 
   // Admin keys
@@ -137,10 +139,12 @@ export const localStorageHelpers = {
       if (version) {
         localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId, version));
         localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(practiceId, version));
+        localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.AI_ASSISTANT_CHAT(practiceId, version));
       }
       
       localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.TERMINAL_RESPONSES(practiceId));
       localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.COMMIT_GRAPH_POSITIONS(practiceId));
+      localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.AI_ASSISTANT_CHAT(practiceId));
       
       localStorageHelpers.removeItem(LOCALSTORAGE_KEYS.GIT_ENGINE.VERSION_METADATA(practiceId));
     },
