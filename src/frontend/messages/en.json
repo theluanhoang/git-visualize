@@ -502,6 +502,11 @@
       "description": "You have learned the basic Git commands. Switch to the practice room to experience and consolidate your knowledge yourself.",
       "button": "Go to practice room →"
     },
+    "quizCTA": {
+      "title": "Test your knowledge!",
+      "description": "You've completed the lesson. Try taking a quiz to test and reinforce your Git knowledge.",
+      "button": "Go to Quiz Room →"
+    },
     "lesson": {
       "backToLessons": "Back to lessons",
       "nextLesson": "Next lesson",

@@ -1,20 +1,18 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Grid, List } from 'lucide-react';
+import { Search, Filter, X } from 'lucide-react';
 import { usePractices } from '@/lib/react-query/hooks/use-practices';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Practice } from '@/services/practices';
-import PracticeList from './PracticeList';
 import PracticeDetails from './PracticeDetails';
 import Pagination from '@/components/common/Pagination';
 import { useTranslations } from 'next-intl';
+import { getDifficultyColor } from '@/utils/practice';
 
 interface PracticeSelectorProps {
   onStartPractice?: (practice: Practice) => void;
@@ -29,9 +27,8 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
   const [selectedPractice, setSelectedPractice] = useState<Practice | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<number | 'all'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [page, setPage] = useState(1);
-  const pageSize = 3;
+  const pageSize = 9; // Show more items in grid view
 
   const { data: practicesData, isLoading } = usePractices({ 
     includeRelations: true,
@@ -46,10 +43,23 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
   ), [practicesData]);
   const totalItems = (practicesData as { total?: number })?.total ?? practices.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const displayedPractices = practices.filter((practice: Practice) =>
+  const displayedPractices = useMemo(() => practices.filter((practice: Practice) =>
     practice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     practice.scenario.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), [practices, searchTerm]);
+
+  const handleSelectPractice = (practice: Practice) => {
+    setSelectedPractice(practice);
+  };
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedPractice(null);
+    // Remove practice from URL if exists
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : undefined);
+    params.delete('practice');
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [searchParams, router]);
 
   useEffect(() => {
     const selectedId = searchParams?.get('practice');
@@ -63,19 +73,48 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
     }
   }, [searchParams, practices, selectedPractice?.id]);
 
-  const handleSelectPractice = (practice: Practice) => {
-    setSelectedPractice(practice);
-    const params = new URLSearchParams(searchParams ? searchParams.toString() : undefined);
-    params.set('practice', practice.id);
-    router.replace(`?${params.toString()}`, { scroll: false });
-  };
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedPractice) {
+        handleCloseModal();
+      }
+    };
 
-  const handleStartPractice = (practiceOverride?: Practice) => {
+    if (selectedPractice) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [selectedPractice, handleCloseModal]);
+
+  const handleStartPractice = useCallback((practiceOverride?: Practice) => {
     const practiceToStart = practiceOverride ?? selectedPractice;
     if (!practiceToStart || !onStartPractice) {
+      console.warn('Cannot start practice: missing practice or onStartPractice handler');
       return;
     }
+    // Close modal immediately
+    handleCloseModal();
+    // Start practice navigation - using window.location.href so it works reliably
     onStartPractice(practiceToStart);
+  }, [selectedPractice, onStartPractice, handleCloseModal]);
+
+  const getDifficultyLabel = (difficulty: number) => {
+    switch (difficulty) {
+      case 1:
+        return t('beginner');
+      case 2:
+        return t('intermediate');
+      case 3:
+        return t('advanced');
+      default:
+        return t('details.difficultyUnknown');
+    }
   };
 
   if (isLoading) {
@@ -86,146 +125,157 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
     );
   }
 
+  if (displayedPractices.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-medium text-muted-foreground mb-2">
+          {lessonSlug ? t('noPractices') : 'Không tìm thấy bài thực hành nào'}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {searchTerm ? 'Thử tìm kiếm với từ khóa khác' : 'Hãy chọn một bài học khác'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              {lessonTitle ? t('selector.titleWithLesson', { lesson: lessonTitle }) : t('selector.title')}
-            </CardTitle>
-            <CardDescription>
-              {lessonSlug 
-                ? t('selector.subtitleWithLesson')
-                : t('selector.subtitle')
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              {}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder={t('selector.searchPlaceholder')}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {}
-              <Select value={difficultyFilter.toString()} onValueChange={(value) => 
-                setDifficultyFilter(value === 'all' ? 'all' : parseInt(value))
-              }>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder={t('selector.filterByDifficulty')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('selector.allDifficulties')}</SelectItem>
-                  <SelectItem value="1">{t('beginner')}</SelectItem>
-                  <SelectItem value="2">{t('intermediate')}</SelectItem>
-                  <SelectItem value="3">{t('advanced')}</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {}
-              <div className="flex border rounded-md">
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="rounded-r-none"
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="rounded-l-none"
-                >
-                  <Grid className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder={t('selector.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          value={difficultyFilter === 'all' ? 'all' : difficultyFilter.toString()}
+          onValueChange={(value) => setDifficultyFilter(value === 'all' ? 'all' : parseInt(value))}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>{t('selector.availablePractices')}</span>
-                <Badge variant="secondary">
-                  {t('selector.totalPractices', { count: totalItems })}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {displayedPractices.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Filter className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>{t('selector.emptyMessage')}</p>
-                </div>
-              ) : (
-                <PracticeList
-                  practices={displayedPractices}
-                  onSelectPractice={handleSelectPractice}
-                  onStartPractice={handleStartPractice}
-                  selectedPracticeId={selectedPractice?.id}
-                />
-              )}
-
-              <div className="mt-6">
-                <Pagination
-                  currentPage={page}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  itemsPerPage={pageSize}
-                  totalItems={totalItems}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          {selectedPractice ? (
-            <PracticeDetails
-              practice={selectedPractice}
-              onStartPractice={() => handleStartPractice(selectedPractice)}
-            />
-          ) : (
-            <Card>
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center text-muted-foreground">
-                  <Grid className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>{t('selector.selectPracticePrompt')}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder={t('selector.filterByDifficulty')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('selector.allDifficulties')}</SelectItem>
+            <SelectItem value="1">{t('beginner')}</SelectItem>
+            <SelectItem value="2">{t('intermediate')}</SelectItem>
+            <SelectItem value="3">{t('advanced')}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {/* Practice Grid - Similar to quiz page */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {displayedPractices.map((practice) => (
+          <div
+            key={practice.id}
+            onClick={() => handleSelectPractice(practice)}
+            className="block border rounded-md p-4 hover:bg-muted/40 transition-colors cursor-pointer"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-semibold text-lg flex-1">{practice.title}</h3>
+              <Badge 
+                className={`ml-2 ${getDifficultyColor(practice.difficulty)}`}
+                variant="secondary"
+              >
+                {getDifficultyLabel(practice.difficulty)}
+              </Badge>
+            </div>
+            {practice.scenario && (
+              <p className="text-sm text-muted-foreground line-clamp-2 mt-1 mb-3">
+                {practice.scenario}
+              </p>
+            )}
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span>{t('details.estimatedTimeLabel', { count: practice.estimatedTime })}</span>
+              <span>{t('details.viewsCount', { count: practice.views })}</span>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectPractice(practice);
+                }}
+              >
+                Chi tiết
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStartPractice(practice);
+                }}
+              >
+                Bắt đầu
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
+
+      {/* Practice Details Modal - Show when practice is selected */}
+      {selectedPractice && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0" 
+          onClick={handleCloseModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="practice-modal-title"
+        >
+          <div 
+            className="bg-background rounded-xl border shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200" 
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* Header with close button */}
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-background z-10">
+              <h2 id="practice-modal-title" className="text-lg font-semibold text-foreground">
+                Chi tiết bài thực hành
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-muted"
+                onClick={handleCloseModal}
+                aria-label="Đóng"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 p-4 md:p-6">
+              <PracticeDetails
+                practice={selectedPractice}
+                onStartPractice={() => {
+                  if (selectedPractice) {
+                    handleStartPractice(selectedPractice);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
