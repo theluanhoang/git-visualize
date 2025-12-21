@@ -75,7 +75,7 @@ export default function LoginPage() {
                 {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
               </div>
               <Button type="submit" disabled={isPending} className="w-full">
-                {isPending ? t('loggingOut') : t('signIn')}
+                {isPending ? t('processing') : t('signIn')}
               </Button>
             </form>
             

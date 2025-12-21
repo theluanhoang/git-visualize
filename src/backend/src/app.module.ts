@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LessonModule } from './modules/lessons/lesson.module';
 import { PracticeModule } from './modules/practice/practice.module';
+import { QuizModule } from './modules/quiz/quiz.module';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { envValidationSchema } from './config/validation';
@@ -28,6 +29,7 @@ import { PublicModule } from './modules/public/public.module';
     DatabaseModule,
     LessonModule,
     PracticeModule,
+    QuizModule,
     GitEngineModule,
     AuthModule,
     UserModule,

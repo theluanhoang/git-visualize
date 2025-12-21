@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { lessonSchema, LessonFormData, LessonWithPractices } from '@/lib/schemas/lesson';
 import { useCreateLesson, useUpdateLesson, useGenerateLesson } from '@/lib/react-query/hooks/use-lessons';
 import { useQueryClient } from '@tanstack/react-query';
-import { lessonKeys, practiceKeys } from '@/lib/react-query/query-keys';
+import { lessonKeys, practiceKeys, quizKeys } from '@/lib/react-query/query-keys';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,14 +15,17 @@ import { Save, Eye, ArrowLeft, Plus, Trash2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import RichTextEditor from '@/components/common/rich-editor/RichTextEditor';
 import { PracticeForm } from './PracticeForm';
+import { QuizForm } from './QuizForm';
 import { GoalModal } from '@/components/common/practice/GoalModal';
 import { PracticeFormData } from '@/lib/schemas/practice';
+import { QuizFormData } from '@/lib/schemas/quiz';
 import { IRepositoryState } from '@/types/git';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { GenerateLessonModal } from '@/components/modals/GenerateLessonModal';
 import { gitEngineApi } from '@/lib/react-query/hooks/use-git-engine';
+import { useQuizzes } from '@/lib/react-query/hooks/use-quizzes';
 
 interface LessonFormProps {
   initialData?: Partial<LessonWithPractices>;
@@ -37,13 +40,64 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
   const queryClient = useQueryClient();
   const [content, setContent] = useState(initialData?.content || '');
   const [showPracticeForm, setShowPracticeForm] = useState(false);
+  const [showQuizForm, setShowQuizForm] = useState(false);
   const [practices, setPractices] = useState<PracticeFormData[]>(initialData?.practices || []);
+  const [quizzes, setQuizzes] = useState<QuizFormData[]>((initialData as any)?.quizzes || []);
   const [editPracticeIndex, setEditPracticeIndex] = useState<number | null>(null);
+  const [editQuizIndex, setEditQuizIndex] = useState<number | null>(null);
   const [previewGoal, setPreviewGoal] = useState<IRepositoryState | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   
   const [serverPractices] = useState<PracticeFormData[]>(initialData?.practices || []);
+  const [serverQuizzes, setServerQuizzes] = useState<QuizFormData[]>((initialData as any)?.quizzes || []);
+  const [deletedQuizIds, setDeletedQuizIds] = useState<string[]>([]);
+  const [deletedPracticeIds, setDeletedPracticeIds] = useState<string[]>([]);
+
+  // Load quizzes when editing
+  const { data: quizzesData } = useQuizzes({
+    lessonSlug: initialData?.slug || undefined,
+    includeRelations: true,
+  });
+
+  useEffect(() => {
+    if (isEdit && quizzesData) {
+      // Handle both array and object with data property
+      const quizzesArray = Array.isArray(quizzesData) 
+        ? quizzesData 
+        : (quizzesData as any)?.data || [];
+      
+      if (quizzesArray.length > 0) {
+        const formattedQuizzes: QuizFormData[] = quizzesArray.map((quiz: any) => ({
+          id: quiz.id,
+          title: quiz.title,
+          description: quiz.description || '',
+          difficulty: quiz.difficulty || 1,
+          estimatedTime: quiz.estimatedTime || 0,
+          isActive: quiz.isActive ?? true,
+          order: quiz.order || 0,
+          passingScore: quiz.passingScore || 70,
+          questions: (quiz.questions || []).map((q: any) => ({
+            question: q.question,
+            type: q.type || 'single_choice',
+            points: q.points || 1,
+            order: q.order || 0,
+            explanation: q.explanation || '',
+            options: (q.options || []).map((opt: any) => ({
+              text: opt.text,
+              isCorrect: opt.isCorrect || false,
+              order: opt.order || 0,
+            })),
+          })),
+          tags: (quiz.tags || []).map((tag: any) => ({
+            name: tag.name || tag,
+          })),
+        }));
+        setQuizzes(formattedQuizzes);
+        setServerQuizzes(formattedQuizzes);
+      }
+    }
+  }, [isEdit, quizzesData]);
   
   const {
     register,
@@ -201,12 +255,49 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
           });
         }
 
-      setPractices(prev => [...prev, ...processedPractices]);
-      toast.success(`${processedPractices.length} practice sessions đã được tạo!`);
+        setPractices(prev => [...prev, ...processedPractices]);
+        toast.success(`${processedPractices.length} practice sessions đã được tạo!`);
+      }
+
+      // Process quizzes if available
+      if (result.quizzes && result.quizzes.length > 0) {
+        toast.info('Đang xử lý quiz sessions...');
+        
+        const processedQuizzes: QuizFormData[] = [];
+        
+        for (let i = 0; i < result.quizzes.length; i++) {
+          const quiz = result.quizzes[i];
+          
+          processedQuizzes.push({
+            title: quiz.title,
+            description: quiz.description || '',
+            difficulty: quiz.difficulty || 1,
+            estimatedTime: quiz.estimatedTime || 0,
+            isActive: quiz.isActive ?? true,
+            order: quiz.order || i,
+            passingScore: quiz.passingScore || 70,
+            questions: (quiz.questions || []).map((q: any, qIndex: number) => ({
+              question: q.question,
+              type: q.type || 'single_choice',
+              points: q.points || 1,
+              order: q.order !== undefined ? q.order : qIndex,
+              explanation: q.explanation || '',
+              options: (q.options || []).map((opt: any, optIndex: number) => ({
+                text: opt.text,
+                isCorrect: opt.isCorrect || false,
+                order: opt.order !== undefined ? opt.order : optIndex,
+              })),
+            })),
+            tags: quiz.tags || [],
+          });
+        }
+
+        setQuizzes(prev => [...prev, ...processedQuizzes]);
+        toast.success(`${processedQuizzes.length} quiz sessions đã được tạo!`);
+      }
       
       setShowGenerateModal(false);
-    }
-  } catch (error) {
+    } catch (error) {
     console.error('Failed to generate lesson:', error);
     const message = (error as any)?.response?.data?.message || (error as Error)?.message || 'Không thể tạo bài học. Vui lòng thử lại.';
     toast.error(message);
@@ -235,6 +326,28 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
     setShowPracticeForm(false);
   };
 
+  const handleSaveQuiz = (quiz: QuizFormData) => {
+    if (editQuizIndex != null) {
+      setQuizzes(prev => {
+        const next = prev.slice();
+        next[editQuizIndex] = quiz;
+        return next;
+      });
+      setShowQuizForm(false);
+      setEditQuizIndex(null);
+      toast.success('Quiz đã được cập nhật!');
+    } else {
+      setQuizzes(prev => [...prev, quiz]);
+      setShowQuizForm(false);
+      setEditQuizIndex(null);
+      toast.success('Quiz đã được thêm vào bài học (sẽ được lưu khi bạn lưu bài học)');
+    }
+  };
+
+  const handleCancelQuiz = () => {
+    setShowQuizForm(false);
+  };
+
   const onSubmit = async (data: LessonFormData) => {
     try {
       const formData = { ...data, content };
@@ -246,32 +359,115 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
         savedLesson = await createLessonMutation.mutateAsync(formData);
       }
       
-      const practicesToCreate = practices.filter((practice) => !practice.id);
+      const lessonIdToUse = savedLesson?.id || lessonId;
+      if (!lessonIdToUse) {
+        toast.error('Không tìm thấy ID bài học');
+        return;
+      }
 
+      const promises: Promise<any>[] = [];
+      
+      // Delete practices that were marked for deletion
+      if (deletedPracticeIds.length > 0) {
+        const { PracticesService } = await import('@/services/practice');
+        for (const practiceId of deletedPracticeIds) {
+          promises.push(PracticesService.delete(practiceId));
+        }
+      }
+
+      // Delete quizzes that were marked for deletion
+      if (deletedQuizIds.length > 0) {
+        const { QuizzesService } = await import('@/services/quizzes');
+        for (const quizId of deletedQuizIds) {
+          promises.push(QuizzesService.delete(quizId));
+        }
+      }
+
+      // Create new practices
+      const practicesToCreate = practices.filter((practice) => !practice.id);
       if (practicesToCreate.length > 0) {
-        const lessonIdToUse = savedLesson?.id || lessonId;
-        if (lessonIdToUse) {          
-          const { PracticesService } = await import('@/services/practice');
-          
-          const savedPractices = [];
-          for (const practice of practicesToCreate) {
-            const savedPractice = await PracticesService.create({
+        const { PracticesService } = await import('@/services/practice');
+        for (const practice of practicesToCreate) {
+          promises.push(
+            PracticesService.create({
               ...practice,
               lessonId: lessonIdToUse
-            });
-            savedPractices.push(savedPractice);
-          }
-          
-          queryClient.invalidateQueries({ queryKey: practiceKeys.all });
-          queryClient.invalidateQueries({ queryKey: lessonKeys.all });
-          
-          toast.success(`Lesson and ${savedPractices.length} new practice(s) saved successfully!`);
-          
-          setPractices([]);
+            })
+          );
         }
-      } else {
-        toast.success('Lesson saved successfully!');
       }
+      
+      // Create new quizzes
+      const quizzesToCreate = quizzes.filter((quiz) => !quiz.id);
+      if (quizzesToCreate.length > 0) {
+        const { QuizzesService } = await import('@/services/quizzes');
+        for (const quiz of quizzesToCreate) {
+          promises.push(
+            QuizzesService.create({
+              ...quiz,
+              lessonId: lessonIdToUse
+            })
+          );
+        }
+      }
+
+      // Update existing practices that were modified
+      if (isEdit) {
+        const { PracticesService } = await import('@/services/practice');
+        for (const practice of practices) {
+          if (practice.id) {
+            // Check if practice was modified by comparing with serverPractices
+            const serverPractice = serverPractices.find(sp => sp.id === practice.id);
+            if (serverPractice && JSON.stringify(serverPractice) !== JSON.stringify(practice)) {
+              promises.push(
+                PracticesService.update(practice.id, {
+                  ...practice,
+                  lessonId: lessonIdToUse
+                })
+              );
+            }
+          }
+        }
+      }
+
+      // Update existing quizzes that were modified
+      if (isEdit) {
+        const { QuizzesService } = await import('@/services/quizzes');
+        for (const quiz of quizzes) {
+          if (quiz.id) {
+            // Check if quiz was modified by comparing with serverQuizzes
+            const serverQuiz = serverQuizzes.find(sq => sq.id === quiz.id);
+            if (serverQuiz && JSON.stringify(serverQuiz) !== JSON.stringify(quiz)) {
+              promises.push(
+                QuizzesService.update(quiz.id, {
+                  ...quiz,
+                  lessonId: lessonIdToUse
+                })
+              );
+            }
+          }
+        }
+      }
+      
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: practiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: quizKeys.all });
+      queryClient.invalidateQueries({ queryKey: lessonKeys.all });
+      
+      const totalOperations = deletedPracticeIds.length + deletedQuizIds.length + practicesToCreate.length + quizzesToCreate.length;
+      if (totalOperations > 0) {
+        toast.success(`Bài học và ${totalOperations} thao tác đã được lưu thành công!`);
+      } else {
+        toast.success('Bài học đã được lưu thành công!');
+      }
+      
+      setPractices([]);
+      setQuizzes([]);
+      setDeletedPracticeIds([]);
+      setDeletedQuizIds([]);
       
       router.push(`/${locale}/admin/lessons`);
     } catch (error) {
@@ -443,7 +639,75 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setPractices(prev => prev.filter((_, i) => i !== index))}
+                          onClick={() => {
+                            const practiceToDelete = practices[index];
+                            // If practice has an id, mark it for deletion (will be deleted when saving lesson)
+                            if (practiceToDelete?.id) {
+                              setDeletedPracticeIds(prev => [...prev, practiceToDelete.id]);
+                            }
+                            // Remove from local state
+                            setPractices(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+
+            {}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-foreground">Quiz Sessions</h3>
+                <Button 
+                  onClick={() => setShowQuizForm(true)}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Quiz
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {quizzes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No quizzes added yet
+                  </p>
+                ) : (
+                  quizzes.map((quiz, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 border rounded">
+                      <div>
+                        <p className="text-sm font-medium">{quiz.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {quiz.difficulty === 1 ? 'Beginner' : 
+                           quiz.difficulty === 2 ? 'Intermediate' : 'Advanced'} • 
+                          {quiz.estimatedTime} min • {quiz.questions?.length || 0} questions
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setEditQuizIndex(index); setShowQuizForm(true); }}
+                        >
+                          Chỉnh sửa
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const quizToDelete = quizzes[index];
+                            // If quiz has an id, mark it for deletion (will be deleted when saving lesson)
+                            if (quizToDelete?.id) {
+                              setDeletedQuizIds(prev => [...prev, quizToDelete.id]);
+                            }
+                            // Remove from local state
+                            setQuizzes(prev => prev.filter((_, i) => i !== index));
+                          }}
                           className="text-red-500 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -492,6 +756,21 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
               lessonId={initialData?.id || lessonId || ''}
               practiceId={editPracticeIndex != null ? (isEdit ? serverPractices[editPracticeIndex]?.id : practices[editPracticeIndex]?.id) : undefined}
               practiceIndex={editPracticeIndex !== null ? editPracticeIndex : undefined}
+            />
+          </div>
+        </div>
+      )}
+
+      {}
+      {showQuizForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <QuizForm
+              onSave={handleSaveQuiz}
+              onCancel={handleCancelQuiz}
+              initialData={editQuizIndex != null ? quizzes[editQuizIndex] : undefined}
+              lessonId={initialData?.id || lessonId || ''}
+              quizId={editQuizIndex != null ? (isEdit ? serverQuizzes[editQuizIndex]?.id : quizzes[editQuizIndex]?.id) : undefined}
             />
           </div>
         </div>

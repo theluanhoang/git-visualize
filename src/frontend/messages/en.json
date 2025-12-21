@@ -2,6 +2,7 @@
   "common": {
     "home": "Home",
     "gitTheory": "Git Theory",
+    "quiz": "Quiz",
     "practice": "Practice",
     "admin": "Admin",
     "login": "Login",

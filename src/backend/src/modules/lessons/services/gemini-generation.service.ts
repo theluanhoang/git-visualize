@@ -57,6 +57,7 @@ export class GeminiGenerationService {
 
       let html = rawText;
       let practices: any[] | undefined = undefined;
+      let quizzes: any[] | undefined = undefined;
       let generatedTitle = '';
       let generatedSlug = '';
       let generatedDescription = '';
@@ -89,6 +90,11 @@ export class GeminiGenerationService {
             } else {
               console.warn('AI did not generate practices array, retrying...');
               throw new Error('No practices array found');
+            }
+
+            // Parse quizzes if available (optional)
+            if (Array.isArray(parsed?.quizzes)) {
+              quizzes = parsed.quizzes;
             }
           } catch (jsonError) {
             console.error('Invalid JSON from AI:', jsonError.message);
@@ -126,6 +132,7 @@ export class GeminiGenerationService {
         slug,
         description,
         ...(practices ? { practices } : {}),
+        ...(quizzes ? { quizzes } : {}),
       };
       } catch (error) {
         console.error(`Gemini API Error (attempt ${attempt}/${maxRetries}):`, error);
@@ -305,9 +312,9 @@ GOAL REPOSITORY STATE REQUIREMENTS:
 - stagingArea is an array of file paths that are currently staged (use [] when clean)
 - Ensure the final state represents a clean repository unless the practice requires staged/unstaged changes
 
-STEP 1: Start your response with a JSON comment containing the lesson metadata and practice data. Use this EXACT format:
+STEP 1: Start your response with a JSON comment containing the lesson metadata, practice data, and quiz data. Use this EXACT format:
 
-<!--JSON {"title":"Concise Lesson Title","slug":"concise-lesson-title","description":"Short summary of the lesson within 220 characters.","practices":[{"title":"Practice Title","scenario":"Practice scenario","difficulty":2,"estimatedTime":15,"instructions":[{"content":"Step 1 instruction","order":1}],"hints":[{"content":"Helpful hint"}],"expectedCommands":[{"command":"git init","order":1,"isRequired":true,"expectedOutput":"Initialized empty Git repository"},{"command":"git add .","order":2,"isRequired":true,"expectedOutput":"All changes staged"},{"command":"git commit -m \"Initial commit\"","order":3,"isRequired":true,"expectedOutput":"[main abc1234] Initial commit"}],"validationRules":[{"type":"min_commands","value":"3"}],"tags":[{"name":"git-basics"}],"goalRepositoryState":{"commits":[{"id":"a1b2c3d4e5f6","type":"COMMIT","parents":[],"author":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"committer":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"message":"Initial commit","branch":"main"}],"branches":[{"name":"main","commitId":"a1b2c3d4e5f6"}],"tags":[],"head":{"type":"branch","ref":"main","commitId":"a1b2c3d4e5f6"},"workingDirectory":[],"stagingArea":[]}}]} -->
+<!--JSON {"title":"Concise Lesson Title","slug":"concise-lesson-title","description":"Short summary of the lesson within 220 characters.","practices":[{"title":"Practice Title","scenario":"Practice scenario","difficulty":2,"estimatedTime":15,"instructions":[{"content":"Step 1 instruction","order":1}],"hints":[{"content":"Helpful hint"}],"expectedCommands":[{"command":"git init","order":1,"isRequired":true,"expectedOutput":"Initialized empty Git repository"},{"command":"git add .","order":2,"isRequired":true,"expectedOutput":"All changes staged"},{"command":"git commit -m \"Initial commit\"","order":3,"isRequired":true,"expectedOutput":"[main abc1234] Initial commit"}],"validationRules":[{"type":"min_commands","value":"3"}],"tags":[{"name":"git-basics"}],"goalRepositoryState":{"commits":[{"id":"a1b2c3d4e5f6","type":"COMMIT","parents":[],"author":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"committer":{"name":"Student","email":"student@example.com","date":"2024-01-01T10:00:00Z"},"message":"Initial commit","branch":"main"}],"branches":[{"name":"main","commitId":"a1b2c3d4e5f6"}],"tags":[],"head":{"type":"branch","ref":"main","commitId":"a1b2c3d4e5f6"},"workingDirectory":[],"stagingArea":[]}}],"quizzes":[{"title":"Quiz Title","description":"Quiz description","difficulty":2,"estimatedTime":10,"passingScore":70,"questions":[{"question":"What command initializes a Git repository?","type":"single_choice","points":1,"options":[{"text":"git init","isCorrect":true},{"text":"git create","isCorrect":false},{"text":"git new","isCorrect":false},{"text":"git start","isCorrect":false}],"explanation":"git init creates a new Git repository in the current directory"}],"tags":[{"name":"git-basics"}]}]} -->
 
 STRICT JSON RULES (MANDATORY):
 - Output MUST be valid JSON according to RFC 8259.
@@ -324,6 +331,12 @@ MANDATORY: You MUST ALWAYS include the JSON comment with practice data. This is 
 - Minimum 1 practice session is REQUIRED
 - Maximum 3 practice sessions recommended for optimal learning
 - At least 1 practice is MANDATORY for every lesson
+- OPTIONAL: Include 1-2 quiz sessions to test knowledge (recommended)
+  * Each quiz should have 5-10 questions
+  * Mix of single_choice, multiple_choice, and true_false questions
+  * Each question should have 2-4 options with at least 1 correct answer
+  * Include explanations for correct answers
+  * Set appropriate difficulty (1-5) and passingScore (70-80)
 
 IMPORTANT: The JSON comment MUST be at the very beginning of your response, before any HTML content.
 Before returning, SELF-CHECK the JSON against the STRICT JSON RULES and fix any violations.

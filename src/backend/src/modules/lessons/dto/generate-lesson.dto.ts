@@ -147,4 +147,31 @@ export class GenerateLessonResponseDto {
     tags?: Array<{ name: string; color?: string }>;
     goalRepositoryState?: any;
   }>;
+
+  @ApiProperty({
+    required: false,
+    description: 'AI-suggested quiz sessions for this lesson',
+  })
+  quizzes?: Array<{
+    title: string;
+    description?: string;
+    difficulty?: number;
+    estimatedTime?: number;
+    isActive?: boolean;
+    order?: number;
+    passingScore?: number;
+    questions?: Array<{
+      question: string;
+      type?: 'single_choice' | 'multiple_choice' | 'true_false';
+      points?: number;
+      order?: number;
+      explanation?: string;
+      options: Array<{
+        text: string;
+        isCorrect: boolean;
+        order?: number;
+      }>;
+    }>;
+    tags?: Array<{ name: string; color?: string }>;
+  }>;
 }

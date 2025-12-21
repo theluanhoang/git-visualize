@@ -62,6 +62,12 @@ function Header() {
                             {t('gitTheory')}
                         </Link>
                         <Link 
+                            href={`/${locale}/quiz`} 
+                            className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors"
+                        >
+                            {t('quiz')}
+                        </Link>
+                        <Link 
                             href={`/${locale}/practice`} 
                             className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors"
                         >
@@ -146,6 +152,7 @@ function Header() {
                     <div className="flex flex-col gap-1" role="menu" aria-label={t('mobileNavigation')}>
                         <Link onClick={() => setOpen(false)} href={`/${locale}`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('home')}</Link>
                         <Link onClick={() => setOpen(false)} href={`/${locale}/git-theory`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('gitTheory')}</Link>
+                        <Link onClick={() => setOpen(false)} href={`/${locale}/quiz`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('quiz')}</Link>
                         <Link onClick={() => setOpen(false)} href={`/${locale}/practice`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('practice')}</Link>
                         {isAdmin && (
                             <Link onClick={() => setOpen(false)} href={`/${locale}/admin`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)] flex items-center gap-2" role="menuitem">
