@@ -13,6 +13,7 @@ import { SessionModule } from './modules/sessions/session.module';
 import { MailModule } from './modules/mail/mail.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PublicModule } from './modules/public/public.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -36,7 +37,8 @@ import { PublicModule } from './modules/public/public.module';
     SessionModule,
     MailModule,
     AdminModule,
-    PublicModule
+    PublicModule,
+    SubscriptionModule,
   ],
   controllers: [],
   providers: [],

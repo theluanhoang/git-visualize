@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ForAdmin } from '../auth/decorators/roles.decorator';
 import { AuthenticatedRequestDto } from '../auth/dto/authenticated-request.dto';
+import { AdminOrProGuard } from '../subscription/guards/admin-or-pro.guard';
 
 @ApiTags('Practices')
 @Controller('practices')
@@ -30,13 +31,12 @@ export class PracticeController {
     }
 
     @Post()
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @ForAdmin()
+    @UseGuards(JwtAuthGuard, AdminOrProGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create a new practice (Admin only)' })
+    @ApiOperation({ summary: 'Create a new practice (Admin or Pro subscription required)' })
     @ApiResponse({ status: 201, description: 'The created practice' })
     @ApiResponse({ status: 400, description: 'Invalid input' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+    @ApiResponse({ status: 403, description: 'Forbidden - Admin role or Pro subscription required' })
     async createPractice(@Body() createPracticeDTO: CreatePracticeDTO) {
         return this.practiceAggregateService.createPractice(createPracticeDTO);
     }

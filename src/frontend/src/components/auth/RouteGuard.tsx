@@ -22,7 +22,9 @@ const ROUTE_CONFIG = {
   
   protected: [
     '/profile',
-    '/practice/session'
+    '/practice/session',
+    '/subscription',
+    '/my-lessons'
   ],
   
   admin: [

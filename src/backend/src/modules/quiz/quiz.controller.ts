@@ -7,6 +7,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ForAdmin } from '../auth/decorators/roles.decorator';
+import { AdminOrProGuard } from '../subscription/guards/admin-or-pro.guard';
 
 @ApiTags('Quizzes')
 @Controller('quizzes')
@@ -23,13 +24,12 @@ export class QuizController {
     }
 
     @Post()
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @ForAdmin()
+    @UseGuards(JwtAuthGuard, AdminOrProGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create a new quiz (Admin only)' })
+    @ApiOperation({ summary: 'Create a new quiz (Admin or Pro subscription required)' })
     @ApiResponse({ status: 201, description: 'The created quiz' })
     @ApiResponse({ status: 400, description: 'Invalid input' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+    @ApiResponse({ status: 403, description: 'Forbidden - Admin role or Pro subscription required' })
     async createQuiz(@Body() createQuizDTO: CreateQuizDTO) {
         return this.quizAggregateService.createQuiz(createQuizDTO);
     }

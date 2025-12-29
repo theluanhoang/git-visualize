@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
         password: config.getOrThrow<string>('database.password'),
         database: config.getOrThrow<string>('database.database'),
         autoLoadEntities: true,
-        synchronize: config.get<boolean>('database.synchronize') ?? false,
+        synchronize: false, // Always false - use migrations instead
         logging: config.get<boolean>('database.logging'),
         extra: {
           max: parseInt(process.env.DB_POOL_SIZE || '50', 10),

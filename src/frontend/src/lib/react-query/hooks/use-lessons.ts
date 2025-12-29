@@ -71,6 +71,10 @@ export const useLessons = (params: {
       return res.data;
     },
     enabled,
+    // Refetch on mount to ensure fresh data, especially for slug queries
+    refetchOnMount: true,
+    // Don't use stale data for slug queries
+    staleTime: params.slug ? 0 : undefined,
   });
 };
 
@@ -233,5 +237,35 @@ export const useHasViewedLesson = (lessonId: string, enabled = true) => {
     },
     enabled: enabled && !!lessonId,
     staleTime: 1000 * 60 * 5,
+  });
+};
+
+export const useMyLessons = (params?: {
+  limit?: number;
+  offset?: number;
+  enabled?: boolean;
+}) => {
+  const { enabled = true, ...queryParams } = params || {};
+  return useQuery({
+    queryKey: [...lessonKeys.all, 'my', queryParams],
+    queryFn: async () => {
+      const api = (await import('@/lib/api/axios')).default;
+      const response = await api.get('/api/v1/lesson/my-lessons', {
+        params: { limit: queryParams.limit || 100, offset: queryParams.offset || 0 },
+      });
+      // Map status from backend format (PUBLISHED/DRAFT) to frontend format (published/draft)
+      const data = response.data?.data || [];
+      const mappedData = data.map((lesson: any) => ({
+        ...lesson,
+        status: lesson.status === 'PUBLISHED' ? 'published' : 
+                lesson.status === 'DRAFT' ? 'draft' : 
+                lesson.status === 'REMOVED' ? 'draft' : 'draft',
+      }));
+      return {
+        ...response.data,
+        data: mappedData,
+      };
+    },
+    enabled,
   });
 };

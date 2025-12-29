@@ -10,6 +10,7 @@ import { QuizEntityService } from './services/quiz-entity.service';
 import { QuizQuestionService } from './services/quiz-question.service';
 import { QuizOptionService } from './services/quiz-option.service';
 import { QuizTagService } from './services/quiz-tag.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { QuizTagService } from './services/quiz-tag.service';
       QuizQuestion,
       QuizOption,
       QuizTag,
-    ])
+    ]),
+    SubscriptionModule,
   ],
   controllers: [QuizController],
   providers: [

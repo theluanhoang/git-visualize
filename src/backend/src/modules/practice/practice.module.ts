@@ -17,6 +17,7 @@ import { PracticeRepositoryState } from './entities/practice-repository-state.en
 import { PracticeRepositoryStateService } from './services/practice-repository-state.service';
 import { PracticeTagService } from './services/practice-tag.service';
 import { PracticeAiAssistantService } from './services/practice-ai-assistant.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { PracticeAiAssistantService } from './services/practice-ai-assistant.ser
       PracticeValidationRule,
       PracticeTag,
       PracticeRepositoryState,
-    ])
+    ]),
+    SubscriptionModule,
   ],
   controllers: [PracticeController],
   providers: [

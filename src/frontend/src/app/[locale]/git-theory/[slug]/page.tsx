@@ -1,7 +1,7 @@
 'use client';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useLessons, useTrackLessonView, useHasViewedLesson } from '@/lib/react-query/hooks/use-lessons';
+import { useLessons, useMyLessons, useTrackLessonView, useHasViewedLesson } from '@/lib/react-query/hooks/use-lessons';
 import LessonViewer from '@/components/common/git-theory/LessonViewer';
 import LessonNavigation from '@/components/common/git-theory/LessonNavigation';
 import PracticeCTA from '@/components/common/git-theory/PracticeCTA';
@@ -10,6 +10,7 @@ import RatingDisplay from '@/components/common/git-theory/RatingDisplay';
 import { Badge } from '@/components/ui/badge';
 import { LOCALSTORAGE_KEYS, localStorageHelpers } from '@/constants/localStorage';
 import { CheckCircle2, Eye } from 'lucide-react';
+import { useProAccess } from '@/hooks/use-pro-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +19,32 @@ export default function LessonPage() {
     const params = useParams();
     const locale = (params.locale as string) || 'en';
     const { slug } = useParams<{ slug: string }>();
-    const { data: lessonData, isLoading, error } = useLessons({
+    const { isPro } = useProAccess();
+    
+    // When querying by slug, don't filter by status
+    // Backend will handle filtering: pro users see their own lessons OR public admin lessons
+    // This matches the behavior in quiz and practice pages
+    const { data: lessonData, isLoading: isLoadingLesson, error } = useLessons({
         slug: slug,
-        status: 'published'
+        // Don't filter by status - let backend handle it based on user permissions
+        // Backend logic: when querying by slug with userId, it returns:
+        // - User's own lesson (authorId = userId) OR
+        // - Public admin lesson (isPublic = true AND authorId IS NULL)
+        enabled: !!slug
     });
+
+    // Also query from myLessons as fallback for pro users
+    const { data: myLessonsData, isLoading: isLoadingMyLessons } = useMyLessons({
+        limit: 100,
+        offset: 0,
+        enabled: isPro && !!slug
+    });
+
+    // Find lesson from myLessons if not found in main query
+    const lessonFromMyLessons = useMemo(() => {
+        if (!slug || !myLessonsData?.data) return null;
+        return myLessonsData.data.find((l: any) => l.slug === slug && l.status === 'published') || null;
+    }, [slug, myLessonsData]);
 
     const { data: listData } = useLessons({
         limit: 100,
@@ -29,12 +52,37 @@ export default function LessonPage() {
         status: 'published'
     });
 
-    const lesson = lessonData?.[0];
-    const sortedLessons = listData ? [...listData].sort((a: any, b: any) => {
-        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : a.id ?? 0;
-        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.id ?? 0;
-        return aTime - bTime;
-    }) : [];
+    // Use lesson from main query, or fallback to myLessons
+    const lesson = lessonData?.[0] || lessonFromMyLessons;
+    const isLoading = isLoadingLesson || (isPro && isLoadingMyLessons);
+    
+    // Merge myLessons into listData for navigation, avoiding duplicates
+    const sortedLessons = useMemo(() => {
+        const publicLessons = listData || [];
+        const myLessons = myLessonsData?.data 
+            ? myLessonsData.data.filter((l: any) => l.status === 'published')
+            : [];
+        
+        // Create a map of slugs to avoid duplicates
+        const lessonMap = new Map<string, any>();
+        
+        // First add public lessons
+        publicLessons.forEach((l: any) => {
+            lessonMap.set(l.slug, l);
+        });
+        
+        // Then add myLessons (will overwrite if same slug)
+        myLessons.forEach((l: any) => {
+            lessonMap.set(l.slug, l);
+        });
+        
+        // Convert to array and sort
+        return Array.from(lessonMap.values()).sort((a: any, b: any) => {
+            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : a.id ?? 0;
+            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.id ?? 0;
+            return aTime - bTime;
+        });
+    }, [listData, myLessonsData]);
 
     const trackViewMutation = useTrackLessonView();
     const hasTrackedRef = useRef(false);
@@ -62,7 +110,25 @@ export default function LessonPage() {
     }, [lesson?.id]);
 
     if (isLoading) return <div className="p-4">Đang tải bài học...</div>;
-    if (error || !lesson) return <div className="p-4 text-red-500">Không tìm thấy bài học</div>;
+    if ((error || !lesson) && !isLoading) {
+        return (
+            <div className="p-4 text-red-500">
+                <p>Không tìm thấy bài học</p>
+                {error && <p className="text-sm mt-2">Lỗi: {String(error)}</p>}
+                {lessonData && lessonData.length === 0 && !lessonFromMyLessons && <p className="text-sm mt-2">Không có dữ liệu trả về từ API (mảng rỗng)</p>}
+                {!lessonData && !lessonFromMyLessons && !isLoading && <p className="text-sm mt-2">Không có dữ liệu trả về từ API (null/undefined)</p>}
+                <div className="text-xs mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                    <p>Debug info:</p>
+                    <p>slug: {slug}</p>
+                    <p>lessonData length: {lessonData?.length ?? 'null'}</p>
+                    <p>lessonFromMyLessons: {lessonFromMyLessons ? 'found' : 'not found'}</p>
+                    <p>isPro: {String(isPro)}</p>
+                    <p>isLoadingLesson: {String(isLoadingLesson)}</p>
+                    <p>isLoadingMyLessons: {String(isLoadingMyLessons)}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-0">

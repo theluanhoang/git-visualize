@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { LessonService } from './lesson.service';
 import { CreateLessonDTO } from './dto/create-lesson.dto';
 import { GetLessonsQueryDto } from './dto/get-lessons.query.dto';
-import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags, ApiConsumes } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
 import { Lesson } from './lesson.entity';
 import { UpdateLessonDTO } from './dto/update-lesson.dto';
 import { GetLessonsResponse, LessonWithPractices } from './types';
@@ -13,11 +13,14 @@ import { LessonGenerationService } from './services/lesson-generation.service';
 import { LessonViewService } from './lesson-view.service';
 import { TrackLessonViewDto } from './dto/track-lesson-view.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UserId } from '../auth/decorators/current-user.decorator';
+import { UserId, CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RatingService } from './rating.service';
 import { CreateRatingDto, UpdateRatingDto } from './dto/create-rating.dto';
 import { RatingResponseDto, LessonRatingStatsDto, UserInfoDto } from './dto/rating-response.dto';
 import { RatingGateway } from './rating.gateway';
+import { RequirePro } from '../subscription/decorators/require-pro.decorator';
+import { ProSubscriptionGuard } from '../subscription/guards/pro-subscription.guard';
+import { EUserRole } from '../users/user.interface';
 
 @ApiTags('Lessons')
 @Controller('lesson')
@@ -50,31 +53,67 @@ export class LessonController {
 
     @Get()
     @ApiOkResponse({ description: 'List lessons with pagination' })
-    async getLessons(@Query() query: GetLessonsQueryDto): Promise<GetLessonsResponse<Lesson | LessonWithPractices>> {
-        return this.lessonService.getLessons(query);
+    async getLessons(
+        @Query() query: GetLessonsQueryDto,
+        @CurrentUser() user?: { sub?: string; role?: EUserRole }
+    ): Promise<GetLessonsResponse<Lesson | LessonWithPractices>> {
+        const userId = user?.sub;
+        const isAdmin = user?.role === EUserRole.ADMIN;
+        return this.lessonService.getLessons(query, userId, isAdmin);
     }
 
     @Post()
-    @ApiOperation({ summary: 'Create a new lesson' })
+    @UseGuards(JwtAuthGuard, ProSubscriptionGuard)
+    @RequirePro()
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Create a new lesson (Pro subscription required)' })
     @ApiCreatedResponse({ description: 'Lesson created', type: Lesson })
     @ApiBadRequestResponse({ description: 'Validation failed' })
-    async createLesson(@Body() createGitTheoryDto: CreateLessonDTO) {
-        return this.lessonService.createLesson(createGitTheoryDto);
+    async createLesson(
+        @UserId() userId: string,
+        @Body() createGitTheoryDto: CreateLessonDTO
+    ) {
+        return this.lessonService.createLesson(createGitTheoryDto, userId);
+    }
+
+    @Get('my-lessons')
+    @UseGuards(JwtAuthGuard, ProSubscriptionGuard)
+    @RequirePro()
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get my lessons (Pro subscription required)' })
+    @ApiOkResponse({ description: 'My lessons retrieved' })
+    async getMyLessons(
+        @UserId() userId: string,
+        @Query('limit') limit?: number,
+        @Query('offset') offset?: number,
+    ) {
+        return this.lessonService.getMyLessons(userId, limit, offset);
     }
 
     @Patch(':id')
-    @ApiOperation({ summary: 'Update a lesson by id' })
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Update a lesson by id (Require ownership or Pro)' })
     @ApiOkResponse({ description: 'Lesson updated', type: Lesson })
     @ApiBadRequestResponse({ description: 'Validation failed' })
-    async updateLesson(@Param('id') id: string, @Body() dto: UpdateLessonDTO) {
-        return this.lessonService.updateLesson(id, dto);
+    async updateLesson(
+        @UserId() userId: string,
+        @Param('id') id: string,
+        @Body() dto: UpdateLessonDTO
+    ) {
+        return this.lessonService.updateLesson(id, dto, userId);
     }
 
     @Delete(':id')
-    @ApiOperation({ summary: 'Delete a lesson by id (soft delete)' })
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Delete a lesson by id (Require ownership or Pro)' })
     @ApiOkResponse({ description: 'Lesson deleted' })
-    async deleteLesson(@Param('id') id: string) {
-        return this.lessonService.deleteLesson(id);
+    async deleteLesson(
+        @UserId() userId: string,
+        @Param('id') id: string
+    ) {
+        return this.lessonService.deleteMyLesson(id, userId);
     }
 
     @Post('generate')

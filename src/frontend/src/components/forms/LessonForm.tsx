@@ -26,14 +26,16 @@ import { toast } from 'sonner';
 import { GenerateLessonModal } from '@/components/modals/GenerateLessonModal';
 import { gitEngineApi } from '@/lib/react-query/hooks/use-git-engine';
 import { useQuizzes } from '@/lib/react-query/hooks/use-quizzes';
+import { usePractices } from '@/lib/react-query/hooks/use-practices';
 
 interface LessonFormProps {
   initialData?: Partial<LessonWithPractices>;
   isEdit?: boolean;
   lessonId?: string;
+  redirectPath?: string; // Custom redirect path after save
 }
 
-export function LessonForm({ initialData, isEdit = false, lessonId }: LessonFormProps) {
+export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath }: LessonFormProps) {
   const router = useRouter();
   const params = useParams();
   const locale = (params.locale as string) || 'en';
@@ -49,13 +51,19 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   
-  const [serverPractices] = useState<PracticeFormData[]>(initialData?.practices || []);
+  const [serverPractices, setServerPractices] = useState<PracticeFormData[]>(initialData?.practices || []);
   const [serverQuizzes, setServerQuizzes] = useState<QuizFormData[]>((initialData as any)?.quizzes || []);
   const [deletedQuizIds, setDeletedQuizIds] = useState<string[]>([]);
   const [deletedPracticeIds, setDeletedPracticeIds] = useState<string[]>([]);
 
   // Load quizzes when editing
   const { data: quizzesData } = useQuizzes({
+    lessonSlug: initialData?.slug || undefined,
+    includeRelations: true,
+  });
+
+  // Load practices when editing (same as quizzes)
+  const { data: practicesData } = usePractices({
     lessonSlug: initialData?.slug || undefined,
     includeRelations: true,
   });
@@ -98,6 +106,67 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
       }
     }
   }, [isEdit, quizzesData]);
+
+  // Load practices from API when editing (same logic as quizzes)
+  useEffect(() => {
+    if (isEdit && practicesData) {
+      // Handle both array and object with data property
+      const practicesArray = Array.isArray(practicesData) 
+        ? practicesData 
+        : (practicesData as any)?.data || [];
+      
+      if (practicesArray.length > 0) {
+        const formattedPractices: PracticeFormData[] = practicesArray.map((practice: any) => ({
+          id: practice.id,
+          title: practice.title,
+          scenario: practice.scenario || '',
+          difficulty: practice.difficulty || 1,
+          estimatedTime: practice.estimatedTime || 0,
+          isActive: practice.isActive ?? true,
+          order: practice.order || 0,
+          instructions: (practice.instructions || []).map((inst: any) => ({
+            content: inst.content,
+            order: inst.order || 0,
+          })),
+          hints: (practice.hints || []).map((hint: any) => ({
+            content: hint.content,
+            order: hint.order || 0,
+          })),
+          expectedCommands: (practice.expectedCommands || []).map((cmd: any) => ({
+            command: cmd.command,
+            order: cmd.order || 0,
+            isRequired: cmd.isRequired ?? false,
+          })),
+          validationRules: (practice.validationRules || []).map((rule: any) => ({
+            type: rule.type,
+            value: rule.value,
+            message: rule.message,
+            order: rule.order || 0,
+          })),
+          tags: (practice.tags || []).map((tag: any) => ({
+            name: tag.name || tag,
+            color: tag.color || '#3B82F6',
+          })),
+          goalRepositoryState: practice.goalRepositoryState,
+        }));
+        setPractices(formattedPractices);
+        setServerPractices(formattedPractices);
+      } else {
+        // If no practices found, set to empty array
+        setPractices([]);
+        setServerPractices([]);
+      }
+    }
+  }, [isEdit, practicesData]);
+
+  // Also update practices from initialData as fallback (if API hasn't loaded yet)
+  useEffect(() => {
+    if (initialData?.practices && Array.isArray(initialData.practices) && initialData.practices.length > 0 && !practicesData) {
+      // Only update if practices haven't been loaded from API yet
+      setPractices(initialData.practices);
+      setServerPractices(initialData.practices);
+    }
+  }, [initialData?.practices, practicesData]);
   
   const {
     register,
@@ -112,7 +181,11 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
       slug: initialData?.slug || '',
       description: initialData?.description || '',
       content: initialData?.content || '',
-      status: initialData?.status || 'published'
+      // Default to 'draft' for new lessons only (pro users should start with draft)
+      // When editing, preserve the existing status from initialData
+      status: isEdit 
+        ? (initialData?.status || 'published') // When editing, default to 'published' if not provided (shouldn't happen)
+        : (initialData?.status || 'draft') // When creating new, default to 'draft'
     }
   });
 
@@ -134,6 +207,29 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
   useEffect(() => {
     setValue('content', content);
   }, [content, setValue]);
+
+  // Update form values when initialData changes (important for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.title) setValue('title', initialData.title);
+      if (initialData.slug) setValue('slug', initialData.slug);
+      if (initialData.description !== undefined) setValue('description', initialData.description);
+      if (initialData.content) {
+        setContent(initialData.content);
+        setValue('content', initialData.content);
+      }
+      // Important: preserve the existing status when editing
+      // Map status from backend format if needed
+      if (initialData.status !== undefined) {
+        const statusValue = initialData.status === 'PUBLISHED' || initialData.status === 'published' 
+          ? 'published' 
+          : initialData.status === 'DRAFT' || initialData.status === 'draft'
+          ? 'draft'
+          : 'draft';
+        setValue('status', statusValue as 'draft' | 'published', { shouldDirty: false, shouldValidate: true });
+      }
+    }
+  }, [initialData, setValue]);
 
   const generateSlug = (title: string) => {
     return title
@@ -469,7 +565,9 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
       setDeletedPracticeIds([]);
       setDeletedQuizIds([]);
       
-      router.push(`/${locale}/admin/lessons`);
+      // Redirect to custom path or default to admin
+      const finalRedirectPath = redirectPath || `/${locale}/admin/lessons`;
+      router.push(finalRedirectPath);
     } catch (error) {
       console.error('Error saving lesson:', error);
       toast.error('Failed to save lesson');
@@ -481,7 +579,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
       {}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/${locale}/admin/lessons`}>
+          <Link href={redirectPath || `/${locale}/admin/lessons`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Quay lại
@@ -726,8 +824,10 @@ export function LessonForm({ initialData, isEdit = false, lessonId }: LessonForm
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="status" className="text-sm">Trạng thái</Label>
                   <Tabs
-                    value={watch('status') as 'draft' | 'published'}
-                    onValueChange={(value) => setValue('status', value as 'draft' | 'published')}
+                    value={watch('status') || 'draft'}
+                    onValueChange={(value) => {
+                      setValue('status', value as 'draft' | 'published', { shouldValidate: true });
+                    }}
                   >
                     <TabsList className="w-full">
                       <TabsTrigger value="draft" className="flex-1">Bản nháp</TabsTrigger>

@@ -12,9 +12,10 @@ type LessonMeta = {
 
 type Props = {
     items: LessonMeta[];
+    myLessons?: LessonMeta[];
 };
 
-export default function QuizSidebar({ items }: Props) {
+export default function QuizSidebar({ items, myLessons = [] }: Props) {
     const [query, setQuery] = React.useState<string>("");
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -24,15 +25,20 @@ export default function QuizSidebar({ items }: Props) {
 
     const activeSlug = searchParams?.get('lesson') || null;
 
+    const filteredMyLessons = React.useMemo(() => {
+        if (!myLessons || myLessons.length === 0) return [];
+        const q = query.trim().toLowerCase();
+        if (!q) return myLessons;
+        return myLessons.filter((i) => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
+    }, [myLessons, query]);
+
     const filtered = React.useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return items;
         return items.filter((i) => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
     }, [items, query]);
 
-    const handleLessonClick = (slug: string) => {
-        // This will be handled by the page component
-    };
+    const hasMyLessons = filteredMyLessons.length > 0;
 
     return (
         <aside className="w-full md:w-64 lg:w-72 xl:w-80 flex-shrink-0 md:sticky md:top-6 self-start">
@@ -49,6 +55,33 @@ export default function QuizSidebar({ items }: Props) {
                     aria-label="Tìm kiếm bài học"
                 />
                 <nav className="mt-3 max-h-[70vh] overflow-auto pr-1" aria-label="Danh sách bài học">
+                    {hasMyLessons && (
+                        <div className="mb-4">
+                            <h3 className="text-sm font-semibold text-foreground mb-2 px-2">Bài học của tôi</h3>
+                            <div className="space-y-1">
+                                {filteredMyLessons.map((item) => {
+                                    const isActive = item.slug === activeSlug;
+                                    return (
+                                        <span key={item.slug}>
+                                            <Link
+                                                href={`/${locale}/quiz?lesson=${item.slug}`}
+                                                className={`block text-left w-full px-2 py-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] ${
+                                                    isActive 
+                                                        ? "bg-[var(--primary-50)] text-[var(--primary-700)] border border-[var(--primary-200)]" 
+                                                        : "hover:bg-muted text-foreground"
+                                                }`}
+                                                aria-current={isActive ? "page" : undefined}
+                                            >
+                                                <span className="font-medium">{item.title}</span>
+                                                <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
+                                            </Link>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                            <div className="my-3 border-t border-[var(--border)]"></div>
+                        </div>
+                    )}
                     <div className="space-y-1">
                         {filtered.map((item) => {
                             const isActive = item.slug === activeSlug;

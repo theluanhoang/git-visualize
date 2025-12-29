@@ -1,6 +1,7 @@
 import { CommonEntity } from "../../shared/entities/common.entity";
-import { Column, Entity } from "typeorm";
+import { Column, Entity, ManyToOne, JoinColumn } from "typeorm";
 import { ELessonStatus } from "./lesson.interface";
+import { User } from "../users/user.entity";
 
 @Entity('lesson')
 export class Lesson extends CommonEntity {
@@ -24,4 +25,17 @@ export class Lesson extends CommonEntity {
 
     @Column({ type: 'enum', enum: ELessonStatus, default: ELessonStatus.PUBLISHED })
     status: ELessonStatus;
+
+    @Column({ name: 'authorId', nullable: true })
+    authorId?: string;
+
+    @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+    @JoinColumn({ name: 'authorId' })
+    author?: User;
+
+    @Column({ name: 'isPublic', default: true })
+    isPublic: boolean;
+
+    @Column({ name: 'isProContent', default: false })
+    isProContent: boolean;
 }

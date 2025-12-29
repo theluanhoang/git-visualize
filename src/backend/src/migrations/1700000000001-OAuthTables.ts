@@ -4,20 +4,31 @@ export class OAuthTables1700000000001 implements MigrationInterface {
   name = 'OAuthTables1700000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Update user table to make password_hash nullable
-    await queryRunner.query(`
-      ALTER TABLE "user" 
-      ALTER COLUMN "password_hash" DROP NOT NULL
-    `);
+    // Update user table to make password_hash nullable (if not already)
+    const passwordHashColumn = await queryRunner.getTable('user');
+    if (passwordHashColumn?.findColumnByName('password_hash')?.isNullable === false) {
+      await queryRunner.query(`
+        ALTER TABLE "user" 
+        ALTER COLUMN "password_hash" DROP NOT NULL
+      `);
+    }
 
-    // Add new columns to user table
-    await queryRunner.query(`
-      ALTER TABLE "user" 
-      ADD COLUMN "first_name" VARCHAR,
-      ADD COLUMN "last_name" VARCHAR,
-      ADD COLUMN "avatar" VARCHAR,
-      ADD COLUMN "is_active" BOOLEAN NOT NULL DEFAULT true
-    `);
+    // Add new columns to user table (only if they don't exist)
+    const userTable = await queryRunner.getTable('user');
+    if (userTable) {
+      if (!userTable.findColumnByName('first_name')) {
+        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "first_name" VARCHAR`);
+      }
+      if (!userTable.findColumnByName('last_name')) {
+        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "last_name" VARCHAR`);
+      }
+      if (!userTable.findColumnByName('avatar')) {
+        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "avatar" VARCHAR`);
+      }
+      if (!userTable.findColumnByName('is_active')) {
+        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "is_active" BOOLEAN NOT NULL DEFAULT true`);
+      }
+    }
 
     // Create oauth_provider table
     await queryRunner.createTable(

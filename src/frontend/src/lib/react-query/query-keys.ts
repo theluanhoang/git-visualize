@@ -83,6 +83,13 @@ export const goalKeys = {
   terminalResponses: ['goal-terminal-responses'] as const,
 } as const;
 
+export const subscriptionKeys = {
+  all: ['subscriptions'] as const,
+  my: () => [...subscriptionKeys.all, 'my'] as const,
+  status: () => [...subscriptionKeys.all, 'status'] as const,
+  payments: () => [...subscriptionKeys.all, 'payments'] as const,
+} as const;
+
 export const commonKeys = {
   authRelated: [
     ...authKeys.all,
