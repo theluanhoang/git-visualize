@@ -20,20 +20,32 @@ function PracticePageContent() {
   const lessonSlug = searchParams.get('lesson');
 
   // Get all lessons to find the first one
+  // Note: Don't include practices here - PracticeSelector will load them separately
   const { data: allLessonsData, isLoading: isLoadingAllLessons } = useLessons({
     limit: 100,
     offset: 0,
     status: 'published',
-    includePractices: true
+    includePractices: false
   });
 
-  // Get selected lesson details
-  const { data: lessonsData, isLoading: isLoadingLesson } = useLessons({ 
-    slug: lessonSlug || undefined,
-    includePractices: true 
+  // Use lesson from allLessonsData if available, otherwise fetch by slug
+  // This avoids duplicate API calls
+  const lesson = React.useMemo(() => {
+    if (lessonSlug && allLessonsData) {
+      const found = allLessonsData.find((l: any) => l.slug === lessonSlug);
+      if (found) return found;
+    }
+    return null;
+  }, [lessonSlug, allLessonsData]);
+
+  // Only fetch by slug if not found in allLessonsData
+  const { data: lessonsData } = useLessons({ 
+    slug: lessonSlug && !lesson ? lessonSlug : undefined,
+    includePractices: false,
+    enabled: !!lessonSlug && !lesson, // Only fetch if we don't have the lesson yet
   });
   
-  const lesson = lessonsData?.[0];
+  const finalLesson = lesson || lessonsData?.[0];
 
   // Auto-select first lesson if no lesson is selected
   React.useEffect(() => {
@@ -62,11 +74,11 @@ function PracticePageContent() {
 
   return (
     <div className="p-4">
-      {lessonSlug && lesson && (
+      {lessonSlug && finalLesson && (
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-2">{lesson.title}</h2>
-          {lesson.description && (
-            <p className="text-sm text-muted-foreground">{lesson.description}</p>
+          <h2 className="text-xl font-semibold mb-2">{finalLesson.title}</h2>
+          {finalLesson.description && (
+            <p className="text-sm text-muted-foreground">{finalLesson.description}</p>
           )}
         </div>
       )}
@@ -79,7 +91,7 @@ function PracticePageContent() {
         <PracticeSelector 
           onStartPractice={handleStartPractice}
           lessonSlug={lessonSlug || undefined}
-          lessonTitle={lesson?.title}
+          lessonTitle={finalLesson?.title}
         />
       </motion.div>
     </div>

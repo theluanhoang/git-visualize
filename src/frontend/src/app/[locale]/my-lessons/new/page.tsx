@@ -54,7 +54,9 @@ export default function NewLessonPage() {
 
   return (
     <PrivateRoute showAccessDenied={false}>
-      <LessonForm redirectPath={`/${locale}/my-lessons`} />
+      <div className="container mx-auto px-4 py-6">
+        <LessonForm redirectPath={`/${locale}/my-lessons`} />
+      </div>
     </PrivateRoute>
   );
 }

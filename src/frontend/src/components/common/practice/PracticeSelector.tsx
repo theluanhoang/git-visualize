@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, X } from 'lucide-react';
 import { usePractices } from '@/lib/react-query/hooks/use-practices';
+import { usePractice } from '@/lib/react-query/hooks/use-practice';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Practice } from '@/services/practices';
 import PracticeDetails from './PracticeDetails';
@@ -24,19 +25,28 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
   const t = useTranslations('practice');
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [selectedPractice, setSelectedPractice] = useState<Practice | null>(null);
+  const [selectedPracticeId, setSelectedPracticeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<number | 'all'>('all');
   const [page, setPage] = useState(1);
   const pageSize = 9; // Show more items in grid view
 
+  // Only load practices when a lesson is selected
+  // Don't include relations for list view - only load when viewing details
   const { data: practicesData, isLoading } = usePractices({ 
-    includeRelations: true,
+    includeRelations: false, // Set to false for faster loading - relations only needed for details
     lessonSlug: lessonSlug || undefined,
     difficulty: typeof difficultyFilter === 'number' ? difficultyFilter : undefined,
     limit: pageSize,
     offset: (page - 1) * pageSize,
+    enabled: !!lessonSlug, // Only load when lessonSlug is available
   });
+
+  // Load practice with relations only when selected for details view
+  const { data: selectedPracticeWithRelations, isLoading: isLoadingDetails } = usePractice(
+    selectedPracticeId || '',
+    { enabled: !!selectedPracticeId }
+  );
 
   const practices = useMemo(() => (
     Array.isArray(practicesData) ? practicesData : (practicesData as { data: Practice[] })?.data || []
@@ -49,11 +59,11 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
   ), [practices, searchTerm]);
 
   const handleSelectPractice = (practice: Practice) => {
-    setSelectedPractice(practice);
+    setSelectedPracticeId(practice.id);
   };
 
   const handleCloseModal = useCallback(() => {
-    setSelectedPractice(null);
+    setSelectedPracticeId(null);
     // Remove practice from URL if exists
     const params = new URLSearchParams(searchParams ? searchParams.toString() : undefined);
     params.delete('practice');
@@ -63,25 +73,25 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
 
   useEffect(() => {
     const selectedId = searchParams?.get('practice');
-    if (!selectedId || selectedPractice?.id === selectedId) {
+    if (!selectedId || selectedPracticeId === selectedId) {
       return;
     }
 
     const found = practices.find((practice) => practice.id === selectedId);
     if (found) {
-      setSelectedPractice(found);
+      setSelectedPracticeId(selectedId);
     }
-  }, [searchParams, practices, selectedPractice?.id]);
+  }, [searchParams, practices, selectedPracticeId]);
 
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedPractice) {
+      if (e.key === 'Escape' && selectedPracticeId) {
         handleCloseModal();
       }
     };
 
-    if (selectedPractice) {
+    if (selectedPracticeId) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
     }
@@ -90,10 +100,10 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
     };
-  }, [selectedPractice, handleCloseModal]);
+  }, [selectedPracticeId, handleCloseModal]);
 
   const handleStartPractice = useCallback((practiceOverride?: Practice) => {
-    const practiceToStart = practiceOverride ?? selectedPractice;
+    const practiceToStart = practiceOverride ?? selectedPracticeWithRelations;
     if (!practiceToStart || !onStartPractice) {
       console.warn('Cannot start practice: missing practice or onStartPractice handler');
       return;
@@ -102,7 +112,7 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
     handleCloseModal();
     // Start practice navigation - using window.location.href so it works reliably
     onStartPractice(practiceToStart);
-  }, [selectedPractice, onStartPractice, handleCloseModal]);
+  }, [selectedPracticeWithRelations, onStartPractice, handleCloseModal]);
 
   const getDifficultyLabel = (difficulty: number) => {
     switch (difficulty) {
@@ -116,6 +126,20 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
         return t('details.difficultyUnknown');
     }
   };
+
+  // Show message when no lesson is selected
+  if (!lessonSlug) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-medium text-muted-foreground mb-2">
+          {t('selector.selectLesson') || 'Vui lòng chọn một bài học để xem các bài thực hành'}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t('selector.selectLessonDescription') || 'Bài học sẽ được chọn tự động...'}
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -232,7 +256,7 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
       )}
 
       {/* Practice Details Modal - Show when practice is selected */}
-      {selectedPractice && (
+      {selectedPracticeId && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0" 
           onClick={handleCloseModal}
@@ -264,14 +288,20 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
             
             {/* Scrollable content */}
             <div className="overflow-y-auto flex-1 p-4 md:p-6">
-              <PracticeDetails
-                practice={selectedPractice}
-                onStartPractice={() => {
-                  if (selectedPractice) {
-                    handleStartPractice(selectedPractice);
-                  }
-                }}
-              />
+              {isLoadingDetails ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : selectedPracticeWithRelations ? (
+                <PracticeDetails
+                  practice={selectedPracticeWithRelations}
+                  onStartPractice={() => {
+                    if (selectedPracticeWithRelations) {
+                      handleStartPractice(selectedPracticeWithRelations);
+                    }
+                  }}
+                />
+              ) : null}
             </div>
           </div>
         </div>

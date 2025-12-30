@@ -17,7 +17,7 @@ function PracticePageContent() {
 
   const { data: lessonsData, isLoading: isLoadingLesson } = useLessons({ 
     slug: lessonSlug || undefined,
-    includePractices: true 
+    includePractices: false 
   });
   
   const lesson = lessonsData?.[0];

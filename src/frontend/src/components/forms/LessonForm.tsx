@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, Eye, ArrowLeft, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Save, Eye, ArrowLeft, Plus, Trash2, Sparkles, BookOpen, FileText, PlayCircle, HelpCircle, Globe } from 'lucide-react';
 import Link from 'next/link';
 import RichTextEditor from '@/components/common/rich-editor/RichTextEditor';
 import { PracticeForm } from './PracticeForm';
@@ -234,9 +235,10 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
       // Important: preserve the existing status when editing
       // Map status from backend format if needed
       if (initialData.status !== undefined) {
-        const statusValue = initialData.status === 'PUBLISHED' || initialData.status === 'published' 
+        const statusStr = String(initialData.status).toUpperCase();
+        const statusValue = statusStr === 'PUBLISHED' || statusStr === 'PUBLISHED' 
           ? 'published' 
-          : initialData.status === 'DRAFT' || initialData.status === 'draft'
+          : statusStr === 'DRAFT' || statusStr === 'DRAFT'
           ? 'draft'
           : 'draft';
         setValue('status', statusValue as 'draft' | 'published', { shouldDirty: false, shouldValidate: true });
@@ -567,10 +569,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
             const serverPractice = serverPractices.find(sp => sp.id === practice.id);
             if (serverPractice && JSON.stringify(serverPractice) !== JSON.stringify(practice)) {
               promises.push(
-                PracticesService.update(practice.id, {
-                  ...practice,
-                  lessonId: lessonIdString
-                })
+                PracticesService.update(practice.id, practice)
               );
             }
           }
@@ -648,7 +647,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
         
         if (status === 409) {
           // Conflict - slug already exists
-          errorMessage = `Slug "${formData.slug}" đã tồn tại. Vui lòng chọn slug khác.`;
+          errorMessage = `Slug "${data.slug}" đã tồn tại. Vui lòng chọn slug khác.`;
         } else if (status === 400) {
           errorMessage = message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.';
         } else if (status === 404) {
@@ -665,93 +664,102 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
   };
 
   return (
-    <div className="space-y-6">
-      {}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={redirectPath || `/${locale}/admin/lessons`}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quay lại
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {isEdit ? 'Chỉnh sửa bài học' : 'Tạo bài học mới'}
-            </h1>
-            <p className="text-muted-foreground">
-              {isEdit ? 'Cập nhật thông tin bài học' : 'Tạo bài học mới cho hệ thống'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline"
-            onClick={() => setShowGenerateModal(true)}
-            className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Tạo bằng AI
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              // Show preview modal with current content
-              setShowPreviewModal(true);
-            }}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Xem trước
-          </Button>
-          <Button 
-            onClick={() => {
-              handleSubmit(onSubmit)();
-            }}
-            disabled={isSubmitting || createLessonMutation.isPending || updateLessonMutation.isPending}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {isSubmitting || createLessonMutation.isPending || updateLessonMutation.isPending 
-              ? 'Đang lưu...' 
-              : 'Lưu bài học'
-            }
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col xl:flex-row min-h-[calc(100vh-8rem)] gap-4 xl:gap-6">
-        {}
-        <div className="flex-1 px-2 sm:px-4 py-4 sm:py-6 min-w-0">
-          <div className="space-y-6">
-            {}
-            <div>
-              <div className="mt-1">
-                <RichTextEditor 
-                  value={content}
-                  onChange={setContent}
-                />
+    <div className="space-y-6 pb-6">
+      {/* Header with gradient background */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--primary)]/5 via-[var(--primary)]/3 to-transparent shadow-sm">
+        <div className="relative p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href={redirectPath || `/${locale}/admin/lessons`}>
+                <Button variant="ghost" size="sm" className="hover:bg-background/50">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Quay lại
+                </Button>
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
+                  <BookOpen className="h-5 w-5 text-[var(--primary)]" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">
+                    {isEdit ? 'Chỉnh sửa bài học' : 'Tạo bài học mới'}
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {isEdit ? 'Cập nhật thông tin bài học' : 'Tạo bài học mới cho hệ thống'}
+                  </p>
+                </div>
               </div>
-              {errors.content && (
-                <p className="text-sm text-red-500 mt-1">{errors.content.message}</p>
-              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                variant="outline"
+                onClick={() => setShowGenerateModal(true)}
+                className="bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 text-purple-700 border-purple-300 shadow-sm transition-all"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Tạo bằng AI
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setShowPreviewModal(true)}
+                className="shadow-sm hover:shadow-md transition-all"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Xem trước
+              </Button>
+              <Button 
+                onClick={() => handleSubmit(onSubmit)()}
+                disabled={isSubmitting || createLessonMutation.isPending || updateLessonMutation.isPending}
+                className="shadow-md hover:shadow-lg transition-all bg-[var(--primary)] hover:bg-[var(--primary)]/90"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting || createLessonMutation.isPending || updateLessonMutation.isPending 
+                  ? 'Đang lưu...' 
+                  : 'Lưu bài học'
+                }
+              </Button>
             </div>
           </div>
         </div>
+      </div>
 
-        {}
-        <div className="w-full xl:w-80 bg-muted/30 border-t xl:border-t-0 xl:border-l border-border px-2 sm:px-4 py-4 sm:py-6 shrink-0">
-          <div className="space-y-6">
-            {}
-            <Card className="p-4">
-              <h3 className="font-bold text-foreground">Chi tiết bài học</h3>
-              <div className="space-y-3">
-                {}
+      <div className="flex flex-col xl:flex-row min-h-[calc(100vh-8rem)] gap-6">
+        {/* Main Content Area */}
+        <div className="flex-1 min-w-0">
+          <Card className="p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-[var(--primary)]" />
+              <h2 className="text-lg font-semibold text-foreground">Nội dung bài học</h2>
+            </div>
+            <div>
+              <RichTextEditor 
+                value={content}
+                onChange={setContent}
+              />
+              {errors.content && (
+                <p className="text-sm text-red-500 mt-2">{errors.content.message}</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="w-full xl:w-96 shrink-0">
+          <div className="space-y-4">
+            {/* Lesson Details Card */}
+            <Card className="p-5 shadow-sm border-2 border-[var(--border)]/50">
+              <div className="flex items-center gap-2 mb-4">
+                <BookOpen className="h-5 w-5 text-[var(--primary)]" />
+                <h3 className="font-semibold text-foreground text-base">Chi tiết bài học</h3>
+              </div>
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Tiêu đề bài học *</Label>
+                  <Label htmlFor="title" className="text-sm font-medium">Tiêu đề bài học *</Label>
                   <Input
                     id="title"
                     {...register('title')}
                     placeholder="Nhập tiêu đề bài học..."
-                    className="mt-1 text-sm"
+                    className="mt-2"
                     onChange={(e) => {
                       register('title').onChange(e);
                       const slug = generateSlug(e.target.value);
@@ -759,74 +767,94 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
                     }}
                   />
                   {errors.title && (
-                    <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
+                    <p className="text-sm text-red-500 mt-1.5">{errors.title.message}</p>
                   )}
                 </div>
 
-                {}
                 <div>
-                  <Label htmlFor="slug">Slug *</Label>
+                  <Label htmlFor="slug" className="text-sm font-medium">Slug *</Label>
                   <Input
                     id="slug"
                     {...register('slug')}
                     placeholder="slug-bai-hoc"
-                    className="mt-1 font-mono text-sm"
+                    className="mt-2 font-mono"
                   />
                   {errors.slug && (
-                    <p className="text-sm text-red-500 mt-1">{errors.slug.message}</p>
+                    <p className="text-sm text-red-500 mt-1.5">{errors.slug.message}</p>
                   )}
                 </div>
 
-                {}
                 <div>
-                  <Label htmlFor="description">Mô tả *</Label>
+                  <Label htmlFor="description" className="text-sm font-medium">Mô tả *</Label>
                   <Input
                     id="description"
                     {...register('description')}
                     placeholder="Mô tả ngắn gọn về bài học..."
-                    className="mt-1 text-sm"
+                    className="mt-2"
                   />
                   {errors.description && (
-                    <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+                    <p className="text-sm text-red-500 mt-1.5">{errors.description.message}</p>
                   )}
                 </div>
               </div>
             </Card>
 
-            {}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-foreground">Practice Sessions</h3>
+            {/* Practice Sessions Card */}
+            <Card className="p-5 shadow-sm border-2 border-[var(--border)]/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="h-5 w-5 text-[var(--primary)]" />
+                  <h3 className="font-semibold text-foreground text-base">Practice Sessions</h3>
+                  {practices.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{practices.length}</Badge>
+                  )}
+                </div>
                 <Button 
                   onClick={() => setShowPracticeForm(true)}
                   size="sm"
                   variant="outline"
+                  className="shadow-sm hover:shadow-md transition-all"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Practice
+                  Thêm Practice
                 </Button>
               </div>
               <div className="space-y-2">
                 {practices.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No practices added yet
-                  </p>
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg bg-muted/30">
+                    <PlayCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">Chưa có practice nào</p>
+                  </div>
                 ) : (
                   practices.map((practice, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded">
-                      <div>
-                        <p className="text-sm font-medium">{practice.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {practice.difficulty === 1 ? 'Beginner' : 
-                           practice.difficulty === 2 ? 'Intermediate' : 'Advanced'} • 
-                          {practice.estimatedTime} min
-                        </p>
+                    <div 
+                      key={index} 
+                      className="group flex items-center justify-between p-3 border rounded-lg hover:border-[var(--primary)]/50 hover:shadow-md transition-all bg-background"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{practice.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs ${
+                              practice.difficulty === 1 ? 'bg-green-100 text-green-700' :
+                              practice.difficulty === 2 ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {practice.difficulty === 1 ? 'Beginner' : 
+                             practice.difficulty === 2 ? 'Intermediate' : 'Advanced'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground">{practice.estimatedTime} phút</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 ml-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => { setEditPracticeIndex(index); setShowPracticeForm(true); }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           Chỉnh sửa
                         </Button>
@@ -835,14 +863,12 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
                           size="sm"
                           onClick={() => {
                             const practiceToDelete = practices[index];
-                            // If practice has an id, mark it for deletion (will be deleted when saving lesson)
                             if (practiceToDelete?.id) {
-                              setDeletedPracticeIds(prev => [...prev, practiceToDelete.id]);
+                              setDeletedPracticeIds(prev => [...prev, practiceToDelete.id!]);
                             }
-                            // Remove from local state
                             setPractices(prev => prev.filter((_, i) => i !== index));
                           }}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -853,40 +879,64 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
               </div>
             </Card>
 
-            {}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-foreground">Quiz Sessions</h3>
+            {/* Quiz Sessions Card */}
+            <Card className="p-5 shadow-sm border-2 border-[var(--border)]/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-[var(--primary)]" />
+                  <h3 className="font-semibold text-foreground text-base">Quiz Sessions</h3>
+                  {quizzes.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{quizzes.length}</Badge>
+                  )}
+                </div>
                 <Button 
                   onClick={() => setShowQuizForm(true)}
                   size="sm"
                   variant="outline"
+                  className="shadow-sm hover:shadow-md transition-all"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Quiz
+                  Thêm Quiz
                 </Button>
               </div>
               <div className="space-y-2">
                 {quizzes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No quizzes added yet
-                  </p>
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg bg-muted/30">
+                    <HelpCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">Chưa có quiz nào</p>
+                  </div>
                 ) : (
                   quizzes.map((quiz, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded">
-                      <div>
-                        <p className="text-sm font-medium">{quiz.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {quiz.difficulty === 1 ? 'Beginner' : 
-                           quiz.difficulty === 2 ? 'Intermediate' : 'Advanced'} • 
-                          {quiz.estimatedTime} min • {quiz.questions?.length || 0} questions
-                        </p>
+                    <div 
+                      key={index} 
+                      className="group flex items-center justify-between p-3 border rounded-lg hover:border-[var(--primary)]/50 hover:shadow-md transition-all bg-background"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{quiz.title}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs ${
+                              quiz.difficulty === 1 ? 'bg-green-100 text-green-700' :
+                              quiz.difficulty === 2 ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {quiz.difficulty === 1 ? 'Beginner' : 
+                             quiz.difficulty === 2 ? 'Intermediate' : 'Advanced'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground">{quiz.estimatedTime} phút</span>
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground">{quiz.questions?.length || 0} câu hỏi</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 ml-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => { setEditQuizIndex(index); setShowQuizForm(true); }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           Chỉnh sửa
                         </Button>
@@ -895,14 +945,12 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
                           size="sm"
                           onClick={() => {
                             const quizToDelete = quizzes[index];
-                            // If quiz has an id, mark it for deletion (will be deleted when saving lesson)
                             if (quizToDelete?.id) {
-                              setDeletedQuizIds(prev => [...prev, quizToDelete.id]);
+                              setDeletedQuizIds(prev => [...prev, quizToDelete.id!]);
                             }
-                            // Remove from local state
                             setQuizzes(prev => prev.filter((_, i) => i !== index));
                           }}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -913,25 +961,32 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
               </div>
             </Card>
 
-            {}
-            <Card className="p-4">
-              <h3 className="font-bold text-foreground">Xuất bản</h3>
+            {/* Publish Status Card */}
+            <Card className="p-5 shadow-sm border-2 border-[var(--border)]/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Globe className="h-5 w-5 text-[var(--primary)]" />
+                <h3 className="font-semibold text-foreground text-base">Xuất bản</h3>
+              </div>
               <div className="space-y-3">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="status" className="text-sm">Trạng thái</Label>
+                  <Label htmlFor="status" className="text-sm font-medium">Trạng thái</Label>
                   <Tabs
                     value={watch('status') || 'draft'}
                     onValueChange={(value) => {
                       setValue('status', value as 'draft' | 'published', { shouldValidate: true });
                     }}
                   >
-                    <TabsList className="w-full">
-                      <TabsTrigger value="draft" className="flex-1">Bản nháp</TabsTrigger>
-                      <TabsTrigger value="published" className="flex-1">Xuất bản</TabsTrigger>
+                    <TabsList className="w-full bg-muted">
+                      <TabsTrigger value="draft" className="flex-1 data-[state=active]:bg-background">
+                        Bản nháp
+                      </TabsTrigger>
+                      <TabsTrigger value="published" className="flex-1 data-[state=active]:bg-background">
+                        Xuất bản
+                      </TabsTrigger>
                     </TabsList>
                   </Tabs>
                   {errors.status && (
-                    <p className="text-sm text-red-500 mt-1">{errors.status.message}</p>
+                    <p className="text-sm text-red-500 mt-1.5">{errors.status.message}</p>
                   )}
                 </div>
               </div>

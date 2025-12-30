@@ -3,11 +3,12 @@ import { PracticesService, GetPracticesQuery } from '@/services/practices';
 import { IRepositoryState } from '@/types/git';
 import { practiceKeys } from '@/lib/react-query/query-keys';
 
-export const usePractices = (query: GetPracticesQuery & { publishedOnly?: boolean } = {}) => {
+export const usePractices = (query: GetPracticesQuery & { publishedOnly?: boolean; enabled?: boolean } = {}) => {
+  const { enabled = true, ...queryParams } = query;
   return useQuery({
-    queryKey: practiceKeys.list(query),
-    queryFn: () => PracticesService.getPractices(query),
-    // Same pattern as useQuizzes - no enabled flag, no staleTime override
+    queryKey: practiceKeys.list(queryParams),
+    queryFn: () => PracticesService.getPractices(queryParams),
+    enabled,
   });
 };
 

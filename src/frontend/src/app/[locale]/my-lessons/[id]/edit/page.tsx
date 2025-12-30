@@ -115,12 +115,14 @@ export default function EditLessonPage() {
 
     return (
         <PrivateRoute showAccessDenied={false}>
-            <LessonForm 
-                initialData={lesson} 
-                isEdit={true} 
-                lessonId={lesson.id} 
-                redirectPath={`/${locale}/my-lessons`}
-            />
+            <div className="container mx-auto px-4 py-6">
+                <LessonForm 
+                    initialData={lesson} 
+                    isEdit={true} 
+                    lessonId={lesson.id} 
+                    redirectPath={`/${locale}/my-lessons`}
+                />
+            </div>
         </PrivateRoute>
     );
 }
