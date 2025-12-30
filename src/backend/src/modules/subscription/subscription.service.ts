@@ -23,6 +23,21 @@ export class SubscriptionService {
                 throw new BadRequestException('User already has an active subscription');
             }
 
+            // Disable all old subscriptions for this user (set status to CANCELLED)
+            const oldSubscriptions = await this.subscriptionRepository.find({
+                where: {
+                    userId,
+                    status: ESubscriptionStatus.ACTIVE,
+                },
+            });
+
+            // Cancel all old active subscriptions
+            for (const oldSub of oldSubscriptions) {
+                oldSub.status = ESubscriptionStatus.CANCELLED;
+                oldSub.autoRenew = false;
+                await this.subscriptionRepository.save(oldSub);
+            }
+
             // Calculate end date based on plan type
             const startDate = new Date();
             const endDate = new Date();
@@ -64,6 +79,7 @@ export class SubscriptionService {
     async getUserSubscription(userId: string): Promise<Subscription | null> {
         return this.subscriptionRepository.findOne({
             where: { userId },
+            relations: ['user'],
             order: { createdAt: 'DESC' },
         });
     }
@@ -123,9 +139,12 @@ export class SubscriptionService {
         subscription.autoRenew = false;
         const updated = await this.subscriptionRepository.save(subscription);
 
-        // Update user subscription status when subscription expires
-        if (new Date() >= subscription.endDate) {
-            await this.updateUserSubscriptionStatus(userId, EUserSubscriptionStatus.EXPIRED, null);
+        // Check if user still has any active subscription
+        const activeSubscription = await this.getActiveSubscription(userId);
+        
+        // If no active subscription exists, update user status to FREE immediately
+        if (!activeSubscription) {
+            await this.updateUserSubscriptionStatus(userId, EUserSubscriptionStatus.FREE, null);
         }
 
         return updated;
@@ -268,9 +287,16 @@ export class SubscriptionService {
     async deactivateSubscription(subscriptionId: string): Promise<Subscription> {
         const subscription = await this.getSubscriptionById(subscriptionId);
         subscription.status = ESubscriptionStatus.CANCELLED;
+        subscription.autoRenew = false;
         const updated = await this.subscriptionRepository.save(subscription);
 
-        await this.updateUserSubscriptionStatus(subscription.userId, EUserSubscriptionStatus.EXPIRED, null);
+        // Check if user still has any active subscription
+        const activeSubscription = await this.getActiveSubscription(subscription.userId);
+        
+        // If no active subscription exists, update user status to FREE immediately
+        if (!activeSubscription) {
+            await this.updateUserSubscriptionStatus(subscription.userId, EUserSubscriptionStatus.FREE, null);
+        }
 
         return updated;
     }

@@ -20,6 +20,7 @@ import { RatingResponseDto, LessonRatingStatsDto, UserInfoDto } from './dto/rati
 import { RatingGateway } from './rating.gateway';
 import { RequirePro } from '../subscription/decorators/require-pro.decorator';
 import { ProSubscriptionGuard } from '../subscription/guards/pro-subscription.guard';
+import { AdminOrProGuard } from '../subscription/guards/admin-or-pro.guard';
 import { EUserRole } from '../users/user.interface';
 
 @ApiTags('Lessons')
@@ -63,16 +64,17 @@ export class LessonController {
     }
 
     @Post()
-    @UseGuards(JwtAuthGuard, ProSubscriptionGuard)
-    @RequirePro()
+    @UseGuards(JwtAuthGuard, AdminOrProGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create a new lesson (Pro subscription required)' })
+    @ApiOperation({ summary: 'Create a new lesson (Admin or Pro subscription required)' })
     @ApiCreatedResponse({ description: 'Lesson created', type: Lesson })
     @ApiBadRequestResponse({ description: 'Validation failed' })
     async createLesson(
-        @UserId() userId: string,
-        @Body() createGitTheoryDto: CreateLessonDTO
+        @Body() createGitTheoryDto: CreateLessonDTO,
+        @CurrentUser() user?: { sub?: string; role?: EUserRole }
     ) {
+        // Admin creates lesson without authorId, Pro users create with their userId
+        const userId = user?.role === EUserRole.ADMIN ? undefined : user?.sub;
         return this.lessonService.createLesson(createGitTheoryDto, userId);
     }
 

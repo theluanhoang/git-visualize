@@ -84,7 +84,7 @@ function Header() {
                                 Bài học của tôi
                             </Link>
                         )}
-                        {isAuthenticated && !isPro && (
+                        {isAuthenticated && !isPro && !isAdmin && (
                             <Link 
                                 href={`/${locale}/subscription`} 
                                 className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors flex items-center gap-1.5"
@@ -193,7 +193,7 @@ function Header() {
                                 Bài học của tôi
                             </Link>
                         )}
-                        {isAuthenticated && !isPro && (
+                        {isAuthenticated && !isPro && !isAdmin && (
                             <Link onClick={() => setOpen(false)} href={`/${locale}/subscription`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)] flex items-center gap-2" role="menuitem">
                                 <Crown className="h-4 w-4" />
                                 Nâng cấp Pro

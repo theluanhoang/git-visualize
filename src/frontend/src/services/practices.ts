@@ -76,6 +76,7 @@ export interface GetPracticesQuery {
   includeRelations?: boolean;
   limit?: number;
   offset?: number;
+  publishedOnly?: boolean;
 }
 
 export class PracticesService {
@@ -89,6 +90,7 @@ export class PracticesService {
     if (query.includeRelations) params.append('includeRelations', 'true');
     if (query.limit) params.append('limit', query.limit.toString());
     if (query.offset) params.append('offset', query.offset.toString());
+    if (query.publishedOnly !== undefined) params.append('publishedOnly', query.publishedOnly.toString());
 
     const response = await api.get(`/api/v1/practices?${params.toString()}`);
     return response.data;

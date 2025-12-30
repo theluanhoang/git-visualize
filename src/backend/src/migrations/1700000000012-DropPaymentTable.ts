@@ -24,3 +24,5 @@ export class DropPaymentTable1700000000012 implements MigrationInterface {
 
 
 
+
+

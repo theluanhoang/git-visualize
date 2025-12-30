@@ -14,10 +14,12 @@ export const usePractices = (params?: {
   q?: string;
   includeRelations?: boolean;
   isActive?: boolean;
+  publishedOnly?: boolean;
 }) => {
   return useQuery({
     queryKey: practiceKeys.list(params),
     queryFn: () => PracticesService.getAll(params),
+    // Same pattern as useQuizzes - no enabled flag, no staleTime override
   });
 };
 

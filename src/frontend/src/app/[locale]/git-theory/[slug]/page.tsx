@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { LOCALSTORAGE_KEYS, localStorageHelpers } from '@/constants/localStorage';
 import { CheckCircle2, Eye } from 'lucide-react';
 import { useProAccess } from '@/hooks/use-pro-access';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,16 +21,17 @@ export default function LessonPage() {
     const locale = (params.locale as string) || 'en';
     const { slug } = useParams<{ slug: string }>();
     const { isPro } = useProAccess();
+    const { isAdmin } = useAuth();
     
     // When querying by slug, don't filter by status
-    // Backend will handle filtering: pro users see their own lessons OR public admin lessons
+    // Backend will handle filtering: pro users see their own lessons (including drafts) OR public admin lessons
     // This matches the behavior in quiz and practice pages
     const { data: lessonData, isLoading: isLoadingLesson, error } = useLessons({
         slug: slug,
         // Don't filter by status - let backend handle it based on user permissions
         // Backend logic: when querying by slug with userId, it returns:
-        // - User's own lesson (authorId = userId) OR
-        // - Public admin lesson (isPublic = true AND authorId IS NULL)
+        // - User's own lesson (authorId = userId) - regardless of status (draft or published)
+        // - Public admin lesson (isPublic = true AND authorId IS NULL AND status = PUBLISHED)
         enabled: !!slug
     });
 
@@ -41,9 +43,11 @@ export default function LessonPage() {
     });
 
     // Find lesson from myLessons if not found in main query
+    // Pro users can view their own lessons regardless of status (draft or published)
     const lessonFromMyLessons = useMemo(() => {
         if (!slug || !myLessonsData?.data) return null;
-        return myLessonsData.data.find((l: any) => l.slug === slug && l.status === 'published') || null;
+        // Find lesson by slug, don't filter by status - pro users can view their own drafts
+        return myLessonsData.data.find((l: any) => l.slug === slug) || null;
     }, [slug, myLessonsData]);
 
     const { data: listData } = useLessons({
@@ -57,10 +61,21 @@ export default function LessonPage() {
     const isLoading = isLoadingLesson || (isPro && isLoadingMyLessons);
     
     // Merge myLessons into listData for navigation, avoiding duplicates
+    // Admin and Pro users can see draft lessons in navigation (their own lessons)
     const sortedLessons = useMemo(() => {
         const publicLessons = listData || [];
+        // For admin: show all lessons (including drafts from myLessons if any)
+        // For pro users: show their own lessons (including drafts)
+        // For regular users: only show published lessons
         const myLessons = myLessonsData?.data 
-            ? myLessonsData.data.filter((l: any) => l.status === 'published')
+            ? myLessonsData.data.filter((l: any) => {
+                // Admin and Pro users can see their own draft lessons
+                if (isAdmin || isPro) {
+                    return true; // Show all (draft and published)
+                }
+                // Regular users only see published
+                return l.status === 'published';
+            })
             : [];
         
         // Create a map of slugs to avoid duplicates
@@ -82,7 +97,7 @@ export default function LessonPage() {
             const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.id ?? 0;
             return aTime - bTime;
         });
-    }, [listData, myLessonsData]);
+    }, [listData, myLessonsData, isAdmin, isPro]);
 
     const trackViewMutation = useTrackLessonView();
     const hasTrackedRef = useRef(false);

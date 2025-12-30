@@ -13,6 +13,7 @@ export const PracticesService = {
     q?: string;
     includeRelations?: boolean;
     isActive?: boolean;
+    publishedOnly?: boolean;
   }) {
     const query: Record<string, unknown> = {};
     if (params?.limit != null) query.limit = Math.min(100, Math.max(1, params.limit));
@@ -25,6 +26,7 @@ export const PracticesService = {
     if (params?.q) query.q = params.q;
     if (params?.includeRelations) query.includeRelations = params.includeRelations;
     if (params?.isActive !== undefined) query.isActive = params.isActive;
+    if (params?.publishedOnly !== undefined) query.publishedOnly = params.publishedOnly;
 
     const res = await api.get('/api/v1/practices', { params: query });
     return res.data;

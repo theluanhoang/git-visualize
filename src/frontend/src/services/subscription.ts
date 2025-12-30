@@ -13,6 +13,10 @@ export interface Subscription {
   autoRenew: boolean;
   createdAt: string;
   updatedAt: string;
+  user?: {
+    id: string;
+    email: string;
+  };
 }
 
 export interface SubscriptionStatusResponse {

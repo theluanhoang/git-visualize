@@ -87,6 +87,12 @@ export class SubscriptionController {
             autoRenew: subscription.autoRenew,
             createdAt: subscription.createdAt,
             updatedAt: subscription.updatedAt,
+            user: subscription.user
+                ? {
+                      id: subscription.user.id,
+                      email: subscription.user.email,
+                  }
+                : undefined,
         };
     }
 }

@@ -160,7 +160,7 @@ function GitStatusPanel({ repositoryState, className = '' }: GitStatusPanelProps
         {/* No Changes */}
         {!status.hasChanges && (
           <div className="text-xs text-muted-foreground text-center py-3">
-            {repositoryState.commits.length === 0 
+            {!repositoryState.commits || repositoryState.commits.length === 0 
               ? "No commits yet"
               : "Clean"}
           </div>

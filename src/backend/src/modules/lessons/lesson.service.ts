@@ -129,7 +129,14 @@ export class LessonService {
     private async fetchPracticesForLessons(lessons: (Lesson & { averageRating?: number })[]): Promise<(LessonWithPractices & { averageRating?: number })[]> {
         return Promise.all(
             lessons.map(async (lesson) => {
-                const practices = await this.practiceAggregateService.getPracticesByLessonSlug(lesson.slug);
+                // When fetching practices for lessons, include draft lessons' practices
+                // This allows admin and pro users to see practices for their own draft lessons
+                const practicesResult = await this.practiceAggregateService.getPractices({ 
+                    lessonSlug: lesson.slug,
+                    includeRelations: true,
+                    publishedOnly: false // Include practices for draft lessons
+                });
+                const practices = 'data' in practicesResult ? practicesResult.data : [practicesResult as any];
                 return {
                     ...lesson,
                     practices: practices,
@@ -184,6 +191,22 @@ export class LessonService {
         // Check ownership: only author or admin can update
         if (userId && existing.authorId && existing.authorId !== userId) {
             throw new NotFoundException('Lesson not found or access denied');
+        }
+
+        // Check if slug is being changed and if the new slug already exists
+        if (dto.slug && dto.slug !== existing.slug) {
+            // Use the same authorId as the existing lesson (or IsNull for admin lessons)
+            const authorIdToCheck = existing.authorId ? existing.authorId : IsNull();
+            const conflictingLesson = await this.lessonRepository.findOne({
+                where: { 
+                    slug: dto.slug,
+                    authorId: authorIdToCheck
+                }
+            });
+
+            if (conflictingLesson && conflictingLesson.id !== id) {
+                throw new ConflictException(`Slug "${dto.slug}" already exists for this user`);
+            }
         }
 
         const merged = this.lessonRepository.merge(existing, dto);

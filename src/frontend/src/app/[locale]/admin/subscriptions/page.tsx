@@ -242,7 +242,21 @@ export default function AdminSubscriptionsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {data?.data.map((subscription: any) => (
+                    {data?.data.map((subscription: any, index: number) => {
+                      const isExpired = subscription.status === 'EXPIRED';
+                      const isCancelled = subscription.status === 'CANCELLED';
+                      const cannotModify = isExpired || isCancelled;
+                      
+                      const isNewest = index === 0;
+                      const canActivate = subscription.status === 'ACTIVE' 
+                        ? false 
+                        : isExpired 
+                        ? false 
+                        : isCancelled 
+                        ? isNewest 
+                        : true;
+                      
+                      return (
                       <tr key={subscription.id} className="hover:bg-muted/50">
                         <td className="px-4 py-3 text-sm">
                           {subscription.user?.email || subscription.userId}
@@ -266,6 +280,7 @@ export default function AdminSubscriptionsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
+                            {/* Nút Kích hoạt: chỉ subscription mới nhất mới có thể kích hoạt nếu CANCELLED */}
                             <Button
                               size="sm"
                               variant="outline"
@@ -273,10 +288,11 @@ export default function AdminSubscriptionsPage() {
                                 setSelectedSubscription(subscription.id);
                                 setActionDialog('activate');
                               }}
-                              disabled={subscription.status === 'ACTIVE'}
+                              disabled={!canActivate}
                             >
                               Kích hoạt
                             </Button>
+                            {/* Nút Gia hạn: chỉ ACTIVE và PENDING mới có thể gia hạn */}
                             <Button
                               size="sm"
                               variant="outline"
@@ -284,9 +300,11 @@ export default function AdminSubscriptionsPage() {
                                 setSelectedSubscription(subscription.id);
                                 setActionDialog('extend');
                               }}
+                              disabled={cannotModify}
                             >
                               Gia hạn
                             </Button>
+                            {/* Nút Hủy: chỉ ACTIVE và PENDING mới có thể hủy */}
                             <Button
                               size="sm"
                               variant="destructive"
@@ -294,13 +312,15 @@ export default function AdminSubscriptionsPage() {
                                 setSelectedSubscription(subscription.id);
                                 setActionDialog('cancel');
                               }}
+                              disabled={cannotModify}
                             >
                               Hủy
                             </Button>
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -425,3 +445,4 @@ export default function AdminSubscriptionsPage() {
   );
 }
 
+  

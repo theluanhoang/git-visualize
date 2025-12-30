@@ -27,6 +27,7 @@ import { GenerateLessonModal } from '@/components/modals/GenerateLessonModal';
 import { gitEngineApi } from '@/lib/react-query/hooks/use-git-engine';
 import { useQuizzes } from '@/lib/react-query/hooks/use-quizzes';
 import { usePractices } from '@/lib/react-query/hooks/use-practices';
+import LessonViewer from '@/components/common/git-theory/LessonViewer';
 
 interface LessonFormProps {
   initialData?: Partial<LessonWithPractices>;
@@ -50,22 +51,28 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
   const [previewGoal, setPreviewGoal] = useState<IRepositoryState | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   
   const [serverPractices, setServerPractices] = useState<PracticeFormData[]>(initialData?.practices || []);
   const [serverQuizzes, setServerQuizzes] = useState<QuizFormData[]>((initialData as any)?.quizzes || []);
   const [deletedQuizIds, setDeletedQuizIds] = useState<string[]>([]);
   const [deletedPracticeIds, setDeletedPracticeIds] = useState<string[]>([]);
 
-  // Load quizzes when editing
+  // Load quizzes when editing (same pattern as practices)
   const { data: quizzesData } = useQuizzes({
     lessonSlug: initialData?.slug || undefined,
     includeRelations: true,
   });
 
-  // Load practices when editing (same as quizzes)
+  // Load practices when editing
+  // If initialData already has practices (from getBySlugWithPractices), use them directly
+  // Otherwise, query from API (for draft lessons, publishedOnly: false)
+  const hasPracticesInInitialData = initialData?.practices && Array.isArray(initialData.practices) && initialData.practices.length > 0;
   const { data: practicesData } = usePractices({
     lessonSlug: initialData?.slug || undefined,
     includeRelations: true,
+    publishedOnly: false, // Allow viewing practices for draft lessons when editing
+    enabled: !hasPracticesInInitialData && isEdit && !!initialData?.slug, // Only query if not already in initialData
   });
 
   useEffect(() => {
@@ -107,9 +114,20 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
     }
   }, [isEdit, quizzesData]);
 
-  // Load practices from API when editing (same logic as quizzes)
+  // Load practices: Priority 1 = initialData.practices (fastest), Priority 2 = API query
   useEffect(() => {
-    if (isEdit && practicesData) {
+    if (!isEdit) return;
+
+    // Priority 1: Use practices from initialData if available (fastest - already loaded from getBySlugWithPractices)
+    // This works for both published and draft lessons when they're loaded via getBySlugWithPractices
+    if (hasPracticesInInitialData) {
+      setPractices(initialData.practices!);
+      setServerPractices(initialData.practices!);
+      return;
+    }
+
+    // Priority 2: Use practices from API query (for draft lessons that weren't loaded with practices)
+    if (practicesData) {
       // Handle both array and object with data property
       const practicesArray = Array.isArray(practicesData) 
         ? practicesData 
@@ -156,17 +174,12 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
         setPractices([]);
         setServerPractices([]);
       }
+    } else if (!hasPracticesInInitialData) {
+      // No practices available from either source
+      setPractices([]);
+      setServerPractices([]);
     }
-  }, [isEdit, practicesData]);
-
-  // Also update practices from initialData as fallback (if API hasn't loaded yet)
-  useEffect(() => {
-    if (initialData?.practices && Array.isArray(initialData.practices) && initialData.practices.length > 0 && !practicesData) {
-      // Only update if practices haven't been loaded from API yet
-      setPractices(initialData.practices);
-      setServerPractices(initialData.practices);
-    }
-  }, [initialData?.practices, practicesData]);
+  }, [isEdit, hasPracticesInInitialData, initialData?.practices, practicesData]);
   
   const {
     register,
@@ -449,17 +462,55 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
       const formData = { ...data, content };
       let savedLesson;
       
-      if (isEdit && lessonId) {
-        savedLesson = await updateLessonMutation.mutateAsync({ id: lessonId, data: formData });
+      // Determine if we're editing: check isEdit flag, lessonId, or initialData.id
+      const shouldUpdate = isEdit && (lessonId || initialData?.id);
+      
+      if (shouldUpdate) {
+        const idToUse = lessonId || initialData?.id;
+        console.log('Updating lesson:', { id: idToUse, slug: formData.slug });
+        savedLesson = await updateLessonMutation.mutateAsync({ id: idToUse!, data: formData });
       } else {
+        console.log('Creating new lesson:', { slug: formData.slug });
         savedLesson = await createLessonMutation.mutateAsync(formData);
       }
       
-      const lessonIdToUse = savedLesson?.id || lessonId;
+      console.log('Saved lesson response:', savedLesson);
+      
+      // Handle different response formats from API
+      // Try multiple ways to extract the ID
+      let lessonIdToUse: string | null = null;
+      
+      if (savedLesson) {
+        // Direct ID
+        if (savedLesson.id) {
+          lessonIdToUse = String(savedLesson.id);
+        }
+        // String ID
+        else if (typeof savedLesson === 'string') {
+          lessonIdToUse = savedLesson;
+        }
+        // Nested data.id
+        else if ((savedLesson as any)?.data?.id) {
+          lessonIdToUse = String((savedLesson as any).data.id);
+        }
+        // Direct id property (number)
+        else if ((savedLesson as any)?.id) {
+          lessonIdToUse = String((savedLesson as any).id);
+        }
+        // Fallback to lessonId if editing
+        else if (shouldUpdate && (lessonId || initialData?.id)) {
+          lessonIdToUse = String(lessonId || initialData?.id!);
+        }
+      }
+      
       if (!lessonIdToUse) {
-        toast.error('Không tìm thấy ID bài học');
+        console.error('Cannot find lesson ID. Full response:', JSON.stringify(savedLesson, null, 2));
+        toast.error('Không tìm thấy ID bài học sau khi lưu. Vui lòng thử lại.');
         return;
       }
+      
+      console.log('Using lesson ID:', lessonIdToUse);
+      const lessonIdString = lessonIdToUse;
 
       const promises: Promise<any>[] = [];
       
@@ -487,7 +538,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
           promises.push(
             PracticesService.create({
               ...practice,
-              lessonId: lessonIdToUse
+              lessonId: lessonIdString
             })
           );
         }
@@ -501,7 +552,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
           promises.push(
             QuizzesService.create({
               ...quiz,
-              lessonId: lessonIdToUse
+              lessonId: lessonIdString
             })
           );
         }
@@ -518,7 +569,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
               promises.push(
                 PracticesService.update(practice.id, {
                   ...practice,
-                  lessonId: lessonIdToUse
+                  lessonId: lessonIdString
                 })
               );
             }
@@ -537,7 +588,7 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
               promises.push(
                 QuizzesService.update(quiz.id, {
                   ...quiz,
-                  lessonId: lessonIdToUse
+                  lessonId: lessonIdString
                 })
               );
             }
@@ -545,16 +596,34 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
         }
       }
       
+      // Lesson has been saved successfully at this point
+      // Now handle practices/quizzes separately so errors don't prevent success message
+      let practicesQuizzesError: Error | null = null;
+      
       if (promises.length > 0) {
-        await Promise.all(promises);
+        try {
+          await Promise.all(promises);
+        } catch (error) {
+          // Log error but don't fail the entire operation
+          console.error('Error saving practices/quizzes:', error);
+          practicesQuizzesError = error as Error;
+        }
       }
       
+      // Invalidate queries regardless of practices/quizzes errors
       queryClient.invalidateQueries({ queryKey: practiceKeys.all });
       queryClient.invalidateQueries({ queryKey: quizKeys.all });
       queryClient.invalidateQueries({ queryKey: lessonKeys.all });
       
+      // Show success message for lesson
       const totalOperations = deletedPracticeIds.length + deletedQuizIds.length + practicesToCreate.length + quizzesToCreate.length;
-      if (totalOperations > 0) {
+      if (practicesQuizzesError) {
+        // Lesson saved but practices/quizzes failed
+        toast.success('Bài học đã được lưu thành công!', {
+          description: 'Tuy nhiên, có lỗi xảy ra khi lưu practices/quizzes. Bạn có thể chỉnh sửa lại sau.',
+        });
+        console.error('Practices/Quizzes error details:', practicesQuizzesError);
+      } else if (totalOperations > 0) {
         toast.success(`Bài học và ${totalOperations} thao tác đã được lưu thành công!`);
       } else {
         toast.success('Bài học đã được lưu thành công!');
@@ -570,7 +639,28 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
       router.push(finalRedirectPath);
     } catch (error) {
       console.error('Error saving lesson:', error);
-      toast.error('Failed to save lesson');
+      const axiosError = error as any;
+      let errorMessage = 'Không thể lưu bài học. Vui lòng thử lại.';
+      
+      if (axiosError?.response) {
+        const status = axiosError.response.status;
+        const message = axiosError.response.data?.message || axiosError.message;
+        
+        if (status === 409) {
+          // Conflict - slug already exists
+          errorMessage = `Slug "${formData.slug}" đã tồn tại. Vui lòng chọn slug khác.`;
+        } else if (status === 400) {
+          errorMessage = message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.';
+        } else if (status === 404) {
+          errorMessage = 'Không tìm thấy bài học. Vui lòng thử lại.';
+        } else {
+          errorMessage = message || errorMessage;
+        }
+      } else if (axiosError?.message) {
+        errorMessage = axiosError.message;
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
@@ -603,7 +693,13 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
             <Sparkles className="h-4 w-4 mr-2" />
             Tạo bằng AI
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              // Show preview modal with current content
+              setShowPreviewModal(true);
+            }}
+          >
             <Eye className="h-4 w-4 mr-2" />
             Xem trước
           </Button>
@@ -882,6 +978,46 @@ export function LessonForm({ initialData, isEdit = false, lessonId, redirectPath
         goalRepositoryState={previewGoal}
         practiceTitle={initialData?.title || 'Preview Goal'}
       />
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div
+          className="fixed inset-0 z-50"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowPreviewModal(false)}
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-4xl max-h-[80vh] rounded-xl shadow-xl border overflow-hidden bg-[var(--surface)] border-[var(--border)] text-[var(--foreground)] modal-surface">
+              <div className="flex items-center justify-between px-4 py-3 border-b bg-[color:var(--muted)] border-[var(--border)]">
+                <div>
+                  <h3 className="text-sm font-semibold">Xem trước bài học</h3>
+                  {watch('title') && (
+                    <p className="text-xs text-muted-foreground mt-1">{watch('title')}</p>
+                  )}
+                </div>
+                <Button
+                  onClick={() => setShowPreviewModal(false)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Đóng
+                </Button>
+              </div>
+              <div className="overflow-auto max-h-[calc(80vh-48px)]">
+                {content ? (
+                  <LessonViewer content={content} />
+                ) : (
+                  <div className="p-6 opacity-70 text-center">Chưa có nội dung để xem trước</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <GenerateLessonModal
         isOpen={showGenerateModal}

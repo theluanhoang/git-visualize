@@ -28,6 +28,12 @@ export class SubscriptionResponseDto {
 
     @ApiProperty()
     updatedAt: Date;
+
+    @ApiProperty({ required: false })
+    user?: {
+        id: string;
+        email: string;
+    };
 }
 
 
