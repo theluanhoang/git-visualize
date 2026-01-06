@@ -1,0 +1,216 @@
+name: Deploy Git Visualize Engine (Vercel EC2)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DOCKER_COMPOSE_VERSION: v2.24.0
+  DOCKER_BACKEND_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/git-visualize-engine-backend
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to EC2 (Vercel stack)
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      # =====================
+      # Checkout source code
+      # =====================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # =====================
+      # Build & push backend image to Docker Hub
+      # =====================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./src/backend
+          file: ./src/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_BACKEND_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.DOCKER_BACKEND_IMAGE_NAME }}:latest
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # =====================
+      # Create .env files from secrets
+      # =====================
+      - name: Create root .env for docker-compose.vercel.yml
+        run: |
+          cat > .env << 'ENVEOF'
+          # Database
+          DB_USER=${{ secrets.DB_USER || 'admin' }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME || 'git_visualize' }}
+          DB_PORT=${{ secrets.DB_PORT || '5432' }}
+
+          # PgAdmin (optional)
+          PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL || '' }}
+          PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD || '' }}
+          PGADMIN_PORT=${{ secrets.PGADMIN_PORT || '8888' }}
+
+          # Nginx ports on EC2
+          HTTP_PORT=${{ secrets.HTTP_PORT || '80' }}
+          HTTPS_PORT=${{ secrets.HTTPS_PORT || '443' }}
+
+          # Docker Hub image configuration
+          DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG=${{ github.sha }}
+          ENVEOF
+
+      - name: Create backend .env.production from secret
+        run: |
+          # BACKEND_ENV_FILE chứa toàn bộ nội dung file .env.production
+          if [ -z "${{ secrets.BACKEND_ENV_FILE }}" ]; then
+            echo "❌ ERROR: BACKEND_ENV_FILE secret is empty or not set!"
+            exit 1
+          fi
+          printf '%s\n' "${{ secrets.BACKEND_ENV_FILE }}" > .env.production
+          # Verify file was created
+          if [ ! -f .env.production ]; then
+            echo "❌ ERROR: Failed to create .env.production"
+            exit 1
+          fi
+          echo "✅ Created .env.production ($(wc -l < .env.production) lines)"
+          # Show first few lines (without sensitive data)
+          echo "First 5 lines of .env.production:"
+          head -5 .env.production | sed 's/=.*/=***/'
+
+      # =====================
+      # Copy minimal deploy files to EC2
+      # =====================
+      - name: Copy docker files to EC2
+        env:
+          RSYNC_RSH: ssh -i /tmp/rsync_key -o StrictHostKeyChecking=no -p ${{ secrets.EC2_SSH_PORT || 22 }}
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rsync_key
+          chmod 600 /tmp/rsync_key
+          
+          # Verify files exist before copying
+          echo "Verifying files to copy..."
+          ls -la docker-compose.vercel.yml || exit 1
+          ls -la .env || exit 1
+          ls -la .env.production || exit 1
+          ls -d nginx || exit 1
+          
+          echo "Copying files to EC2..."
+          rsync -az --info=progress2 \
+            docker-compose.vercel.yml \
+            nginx \
+            .env \
+            .env.production \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/git-visulize-engine/
+          
+          # Verify files were copied
+          echo "Verifying files on EC2..."
+          ssh -i /tmp/rsync_key -o StrictHostKeyChecking=no -p ${{ secrets.EC2_SSH_PORT || 22 }} \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "cd /home/${{ secrets.EC2_USER }}/git-visulize-engine && ls -la .env && ls -la .env.production || echo '⚠️ File not found on EC2'"
+          
+          rm -f /tmp/rsync_key
+
+      # =====================
+      # Deploy on EC2
+      # =====================
+      - name: Validate backend image tag
+        run: |
+          set -e
+          if [ -z "${{ env.DOCKER_BACKEND_IMAGE_NAME }}" ]; then
+            echo "DOCKER_BACKEND_IMAGE_NAME is missing. Check secrets.DOCKERHUB_USERNAME or set DOCKER_BACKEND_IMAGE_NAME explicitly."
+            exit 1
+          fi
+          echo "Using backend image: ${{ env.DOCKER_BACKEND_IMAGE_NAME }}:${{ github.sha }}"
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          command_timeout: 45m
+          script: |
+            set -e
+
+            APP_DIR="/home/${{ secrets.EC2_USER }}/git-visulize-engine"
+
+            cd "$APP_DIR"
+
+            echo "Checking Docker..."
+            if ! command -v docker &> /dev/null; then
+              echo "Docker not found. Please install Docker before deploying."
+              exit 1
+            fi
+
+            echo "Checking Docker Compose..."
+            if ! docker compose version &> /dev/null; then
+              echo "Docker Compose (v2) not found. Please install it before deploying."
+              exit 1
+            fi
+            sudo systemctl start docker || true
+
+            echo "Loading environment variables..."
+            if [ ! -f .env ]; then
+              echo "Missing .env file"
+              exit 1
+            fi
+
+            echo "Starting services (pull latest images, no build)..."
+            docker compose -f docker-compose.vercel.yml pull
+            docker compose -f docker-compose.vercel.yml up -d --remove-orphans
+
+            docker compose -f docker-compose.vercel.yml ps
+            echo "Deployment completed!"
+
+      # =====================
+      # Health Check
+      # =====================
+      - name: Health Check via EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          script: |
+            max_attempts=20
+            attempt=0
+
+            until curl -fs http://localhost/health; do
+              attempt=$((attempt + 1))
+              echo "Health check attempt $attempt/$max_attempts"
+              [ "$attempt" -ge "$max_attempts" ] && exit 1
+              sleep 3
+            done
+
+            echo "Health check passed!"
+
+      # =====================
+      # Summary
+      # =====================
+      - name: Deployment Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+          fi
+
+

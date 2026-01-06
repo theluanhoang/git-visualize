@@ -35,9 +35,9 @@ export default () => ({
       callbackUrl: process.env.GOOGLE_CALLBACK_URL ?? 'http://localhost:8000/api/v1/auth/oauth/google/callback',
     },
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID ?? '',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? '',
-      callbackUrl: process.env.GITHUB_CALLBACK_URL ?? 'http://localhost:8000/api/v1/auth/oauth/github/callback',
+      clientId: process.env.OAUTH_GITHUB_CLIENT_ID ?? '',
+      clientSecret: process.env.OAUTH_GITHUB_CLIENT_SECRET ?? '',
+      callbackUrl: process.env.OAUTH_GITHUB_CALLBACK_URL ?? 'http://localhost:8000/api/v1/auth/oauth/github/callback',
     },
     facebook: {
       clientId: process.env.FACEBOOK_CLIENT_ID ?? '',
