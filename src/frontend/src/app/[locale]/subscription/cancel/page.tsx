@@ -1,13 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function SubscriptionCancelPage() {
+function SubscriptionCancelContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
 
@@ -40,6 +40,25 @@ export default function SubscriptionCancelPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SubscriptionCancelPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-4 py-8 max-w-2xl">
+        <Card className="text-center">
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <XCircle className="h-16 w-16 text-red-500 animate-pulse" />
+            </div>
+            <CardTitle className="text-3xl">Đang tải...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <SubscriptionCancelContent />
+    </Suspense>
   );
 }
 

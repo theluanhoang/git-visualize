@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,7 @@ import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { subscriptionKeys } from '@/hooks/use-subscription';
 import Link from 'next/link';
 
-export default function SubscriptionSuccessPage() {
-  const router = useRouter();
+function SubscriptionSuccessContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const transactionId = searchParams.get('transactionId');
@@ -54,6 +53,25 @@ export default function SubscriptionSuccessPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SubscriptionSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-4 py-8 max-w-2xl">
+        <Card className="text-center">
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <CheckCircle2 className="h-16 w-16 text-green-500 animate-pulse" />
+            </div>
+            <CardTitle className="text-3xl">Đang tải...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <SubscriptionSuccessContent />
+    </Suspense>
   );
 }
 
