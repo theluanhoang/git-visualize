@@ -135,7 +135,9 @@ export class CreateQuizTables1700000000007 implements MigrationInterface {
                         name: 'type',
                         type: 'enum',
                         enum: ['single_choice', 'multiple_choice', 'true_false'],
-                        default: 'single_choice',
+                        // Use quoted string so Postgres treats this as a literal enum value,
+                        // not a column reference in the DEFAULT expression.
+                        default: "'single_choice'",
                     },
                     {
                         name: 'points',
