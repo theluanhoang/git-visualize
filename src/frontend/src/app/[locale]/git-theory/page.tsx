@@ -2,12 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLessons } from '@/lib/react-query/hooks/use-lessons';
+import { useLessons, useMyLessons } from '@/lib/react-query/hooks/use-lessons';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, X } from 'lucide-react';
 import { SearchParamsProvider } from '@/components/common';
 import { EmptyLessonsState } from '@/components/common/git-theory/EmptyLessonsState';
+import { useProAccess } from '@/hooks/use-pro-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,18 +20,67 @@ function GitTheoryPageContent() {
   const query = searchParams?.get('query') || '';
   const t = useTranslations('gitTheory.page');
   const tCommon = useTranslations('common');
+  const { isPro } = useProAccess();
   const { data, isLoading, error } = useLessons({
     limit: 100,
     offset: 0,
     status: 'published'
   });
+  const { data: myLessonsData } = useMyLessons({
+    limit: 100,
+    offset: 0,
+    enabled: isPro
+  });
+
+  // Merge myLessons into main data, avoiding duplicates
+  const mergedData = React.useMemo(() => {
+    if (!data) return [];
+    
+    const publicLessons = data || [];
+    const myLessons = myLessonsData?.data 
+      ? myLessonsData.data
+          .filter((l: any) => l.status === 'published')
+          .map((l: any) => ({
+            ...l,
+            id: l.id,
+            title: l.title,
+            slug: l.slug,
+            description: l.description,
+            content: l.content,
+            status: l.status,
+            createdAt: l.createdAt,
+            updatedAt: l.updatedAt,
+            views: l.views,
+          }))
+      : [];
+    
+    // Create a map of slugs to avoid duplicates
+    const lessonMap = new Map<string, any>();
+    
+    // First add public lessons
+    publicLessons.forEach((lesson: any) => {
+      lessonMap.set(lesson.slug, lesson);
+    });
+    
+    // Then add myLessons (will overwrite if same slug, which is correct - user's own lesson takes priority)
+    myLessons.forEach((lesson: any) => {
+      lessonMap.set(lesson.slug, lesson);
+    });
+    
+    // Convert back to array and sort
+    return Array.from(lessonMap.values()).sort((a: any, b: any) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : a.id ?? 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.id ?? 0;
+      return aTime - bTime; // oldest -> newest
+    });
+  }, [data, myLessonsData]);
 
   const filteredData = React.useMemo(() => {
-    if (!data) return [];
-    if (!query.trim()) return data;
+    if (!mergedData || mergedData.length === 0) return [];
+    if (!query.trim()) return mergedData;
     
     const searchTerm = query.toLowerCase().trim();
-    return data.filter((lesson: any) => {
+    return mergedData.filter((lesson: any) => {
       const title = (lesson.title || '').toLowerCase();
       const description = (lesson.description || '').toLowerCase();
       const slug = (lesson.slug || '').toLowerCase();
@@ -38,23 +88,18 @@ function GitTheoryPageContent() {
              description.includes(searchTerm) || 
              slug.includes(searchTerm);
     });
-  }, [data, query]);
+  }, [mergedData, query]);
 
   React.useEffect(() => {
-    if (!query && data && data.length > 0) {
-      const sorted = [...data].sort((a: any, b: any) => {
-        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : a.id ?? 0;
-        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.id ?? 0;
-        return aTime - bTime;
-      });
-      const first = sorted[0];
+    if (!query && mergedData && mergedData.length > 0) {
+      const first = mergedData[0];
       if (first?.slug) {
         router.replace(`/${locale}/git-theory/${first.slug}`);
       }
     }
-  }, [data, router, query, locale]);
+  }, [mergedData, router, query, locale]);
 
-  if (!isLoading && !error && !query && (!data || data.length === 0)) {
+  if (!isLoading && !error && !query && (!mergedData || mergedData.length === 0)) {
     return <EmptyLessonsState />;
   }
 

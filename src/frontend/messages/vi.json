@@ -2,6 +2,7 @@
   "common": {
     "home": "Trang chủ",
     "gitTheory": "Lý thuyết Git",
+    "quiz": "Trắc nghiệm",
     "practice": "Thực hành",
     "admin": "Quản trị",
     "login": "Đăng nhập",
@@ -499,6 +500,11 @@
       "title": "Thử ngay!",
       "description": "Bạn đã học các lệnh Git cơ bản. Hãy chuyển sang phòng thực hành để tự mình trải nghiệm và củng cố kiến thức.",
       "button": "Vào phòng thực hành →"
+    },
+    "quizCTA": {
+      "title": "Kiểm tra kiến thức!",
+      "description": "Bạn đã hoàn thành bài học. Hãy thử làm bài trắc nghiệm để kiểm tra và củng cố kiến thức Git của bạn.",
+      "button": "Vào phòng trắc nghiệm →"
     },
     "lesson": {
       "backToLessons": "Quay lại bài học",

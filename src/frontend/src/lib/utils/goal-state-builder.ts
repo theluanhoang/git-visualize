@@ -33,7 +33,7 @@ export const buildGoalStateFromCommands = async (
     const sortedCommands = sortCommandsByOrder(commands);
     const commandsToExecute = sortedCommands
       .map((cmd) => cmd.command)
-      .filter((cmd) => cmd && cmd.startsWith('git '));
+      .filter((cmd) => cmd && (cmd.startsWith('git ') || cmd.startsWith('touch ')));
 
     if (commandsToExecute.length === 0) {
       return null;
@@ -50,7 +50,7 @@ export const extractGitCommandsFromResponses = (
   responses: GitCommandResponse[]
 ): Array<{ command: string; order: number; isRequired: boolean }> => {
   const commands = responses.map((r) => r.command).filter(Boolean) as string[];
-  const gitLines = commands.filter((c) => c.startsWith('git '));
+  const gitLines = commands.filter((c) => c.startsWith('git ') || c.startsWith('touch '));
   return gitLines.map((cmd, i) => ({ command: cmd, order: i + 1, isRequired: true }));
 };
 

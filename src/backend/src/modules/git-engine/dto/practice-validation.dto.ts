@@ -9,6 +9,14 @@ enum GitObjectTypeDto {
   COMMIT = 'COMMIT',
 }
 
+enum FileStatusDto {
+  UNTRACKED = 'untracked',
+  MODIFIED = 'modified',
+  DELETED = 'deleted',
+  STAGED = 'staged',
+  UNMODIFIED = 'unmodified',
+}
+
 class AuthorDto {
   @ApiProperty({ example: 'You' })
   @IsString()
@@ -104,6 +112,22 @@ class HeadDto {
   commitId?: string;
 }
 
+class FileStateDto {
+  @ApiProperty({ example: 'README.md' })
+  @IsString()
+  @IsNotEmpty()
+  path!: string;
+
+  @ApiProperty({ enum: Object.values(FileStatusDto), example: 'untracked' })
+  @IsEnum(FileStatusDto)
+  status!: FileStatusDto;
+
+  @ApiProperty({ required: false, example: '# Hello' })
+  @IsOptional()
+  @IsString()
+  content?: string;
+}
+
 export class RepositoryStateDto {
   @ApiProperty({ type: () => [CommitDto] })
   @IsArray()
@@ -128,6 +152,27 @@ export class RepositoryStateDto {
   @ValidateNested()
   @Type(() => HeadDto)
   head?: HeadDto | null;
+
+  @ApiProperty({
+    required: false,
+    type: () => [FileStateDto],
+    description: 'Working directory files with their statuses'
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FileStateDto)
+  workingDirectory?: FileStateDto[];
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: 'List of file paths that are currently staged'
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  stagingArea?: string[];
 }
 
 export class PracticeValidationDto {

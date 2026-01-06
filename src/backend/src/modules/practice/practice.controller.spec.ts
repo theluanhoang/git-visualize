@@ -90,10 +90,10 @@ describe('PracticeController', () => {
   });
 
   it('repository state upsert/remove error propagation', async () => {
-    repoStateService.upsert.mockRejectedValue(new Error('version conflict'));
-    await expect(
-      controller.upsertRepositoryState('p1', { version: 2 } as any, { user: { sub: 'u1' } } as any)
-    ).rejects.toThrow('version conflict');
+    // Version conflict không còn throw error nữa, chỉ log warning và tiếp tục
+    repoStateService.upsert.mockResolvedValue({ state: {}, version: 10 } as any);
+    const result = await controller.upsertRepositoryState('p1', { version: 9 } as any, { user: { sub: 'u1' } } as any);
+    expect(result).toEqual({ state: {}, version: 10 });
 
     repoStateService.remove.mockRejectedValue(new Error('not found'));
     await expect(controller.deleteRepositoryState('p1', { user: { sub: 'u1' } } as any)).rejects.toThrow('not found');

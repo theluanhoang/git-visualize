@@ -39,6 +39,14 @@ export const practiceKeys = {
   detail: (id: string) => [...practiceKeys.details(), id] as const,
 } as const;
 
+export const quizKeys = {
+  all: ['quizzes'] as const,
+  lists: () => [...quizKeys.all, 'list'] as const,
+  list: (params?: any) => [...quizKeys.lists(), params] as const,
+  details: () => [...quizKeys.all, 'detail'] as const,
+  detail: (id: string) => [...quizKeys.details(), id] as const,
+} as const;
+
 export const gitKeys = {
   all: ['git'] as const,
   state: (practiceId?: string) => [...gitKeys.all, 'state', practiceId ?? 'global'] as const,
@@ -75,6 +83,13 @@ export const goalKeys = {
   terminalResponses: ['goal-terminal-responses'] as const,
 } as const;
 
+export const subscriptionKeys = {
+  all: ['subscriptions'] as const,
+  my: () => [...subscriptionKeys.all, 'my'] as const,
+  status: () => [...subscriptionKeys.all, 'status'] as const,
+  payments: () => [...subscriptionKeys.all, 'payments'] as const,
+} as const;
+
 export const commonKeys = {
   authRelated: [
     ...authKeys.all,
@@ -84,6 +99,7 @@ export const commonKeys = {
   lessonRelated: [
     ...lessonKeys.all,
     ...practiceKeys.all,
+    ...quizKeys.all,
   ],
   
   practiceRelated: [

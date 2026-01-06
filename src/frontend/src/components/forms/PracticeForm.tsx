@@ -15,6 +15,8 @@ import { Plus, Trash2, GripVertical, Lightbulb, Target, Terminal as TerminalIcon
 import { motion, AnimatePresence } from 'framer-motion';
 import CommitGraph from '@/components/common/CommitGraph';
 import Terminal from '@/components/common/terminal/Terminal';
+import GitStatusPanel from '@/components/common/GitStatusPanel';
+import FileExplorer from '@/components/common/FileExplorer';
 import { useTerminalResponses, useGitEngine } from '@/lib/react-query/hooks/use-git-engine';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePracticeFormSubmission } from '@/lib/react-query/hooks/use-practice';
@@ -438,19 +440,25 @@ export function PracticeForm({ onSave, onCancel, initialData, lessonId, practice
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 min-w-0">
-                    <div className="min-w-0 overflow-hidden" key={`commit-graph-${resetKey}`}>
-                      <CommitGraph 
-                        dataSource="goal" 
-                        goalRepositoryState={goalPreviewState || undefined} 
-                        showClearButton={false} 
-                        title="Goal Preview"
-                        practiceId={goalBuilderId}
-                        isResetting={isResetting}
-                      />
+                  <div className="flex flex-col lg:flex-row gap-4 min-w-0">
+                    <div className="flex-1 flex flex-col gap-3 min-w-0">
+                      <div className="min-w-0 overflow-hidden" key={`commit-graph-${resetKey}`}>
+                        <CommitGraph 
+                          dataSource="goal" 
+                          goalRepositoryState={goalPreviewState || undefined} 
+                          showClearButton={false} 
+                          title="Goal Preview"
+                          practiceId={goalBuilderId}
+                          isResetting={isResetting}
+                        />
+                      </div>
+                      <div className="min-w-0 overflow-hidden" key={resetKey}>
+                        <Terminal practiceId={goalBuilderId} />
+                      </div>
                     </div>
-                    <div className="min-w-0 overflow-hidden" key={resetKey}>
-                      <Terminal practiceId={goalBuilderId} />
+                    <div className="w-full lg:w-80 flex flex-col gap-3">
+                      <FileExplorer practiceId={goalBuilderId} />
+                      <GitStatusPanel repositoryState={goalPreviewState} />
                     </div>
                   </div>
                 </CardContent>

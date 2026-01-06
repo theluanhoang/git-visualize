@@ -3,6 +3,12 @@ import { CommonEntity } from '../../shared/entities/common.entity';
 import { OAuthProvider } from './oauth-provider.entity';
 import { EUserRole } from './user.interface';
 
+export enum EUserSubscriptionStatus {
+    FREE = 'FREE',
+    PRO = 'PRO',
+    EXPIRED = 'EXPIRED',
+}
+
 @Entity('user')
 export class User extends CommonEntity {
   @Column({ unique: true })
@@ -29,6 +35,17 @@ export class User extends CommonEntity {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: EUserSubscriptionStatus,
+    name: 'subscriptionStatus',
+    default: EUserSubscriptionStatus.FREE,
+  })
+  subscriptionStatus: EUserSubscriptionStatus;
+
+  @Column({ name: 'subscriptionExpiresAt', type: 'timestamp', nullable: true })
+  subscriptionExpiresAt?: Date;
 
   @OneToMany(() => OAuthProvider, (provider) => provider.user)
   oauthProviders: OAuthProvider[];

@@ -2,10 +2,11 @@
 
 import Sidebar from '@/components/common/git-theory/Sidebar'
 import Link from 'next/link';
-import { useLessons } from '@/lib/react-query/hooks/use-lessons';
+import { useLessons, useMyLessons } from '@/lib/react-query/hooks/use-lessons';
 import React, { ReactNode } from 'react'
 import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
+import { useProAccess } from '@/hooks/use-pro-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,12 @@ function GitTheoryLayout({ children }: Props) {
         offset: 0,
         status: 'published'
     });
+    const { isPro } = useProAccess();
+    const { data: myLessonsData } = useMyLessons({
+        limit: 100,
+        offset: 0,
+        enabled: isPro
+    });
     const params = useParams();
     const locale = (params.locale as string) || 'en';
     const t = useTranslations('gitTheory.page');
@@ -31,6 +38,18 @@ function GitTheoryLayout({ children }: Props) {
             return aTime - bTime; // oldest -> newest
         })
         .map((l: any) => ({ slug: l.slug, title: l.title, description: l.description ?? '' })) : [];
+    
+    const myLessons = myLessonsData?.data 
+        ? myLessonsData.data
+            .filter((l: any) => l.status === 'published')
+            .sort((a: any, b: any) => {
+                const aTime = a.createdAt ? new Date(a.createdAt).getTime() : a.id ?? 0;
+                const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.id ?? 0;
+                return aTime - bTime;
+            })
+            .map((l: any) => ({ slug: l.slug, title: l.title, description: l.description ?? '' }))
+        : [];
+    
     const hasLessons = !isLoading && data.length > 0;
 
     return (
@@ -61,7 +80,7 @@ function GitTheoryLayout({ children }: Props) {
                 </div>
             </div>
             <div className={`mt-6 md:mt-8 flex flex-col gap-6 ${hasLessons ? 'md:flex-row md:gap-8' : ''}`}>
-                {hasLessons && <Sidebar items={data ?? []} />}
+                {hasLessons && <Sidebar items={data ?? []} myLessons={myLessons} />}
                 <div className="flex-1">
                     {children}
                 </div>

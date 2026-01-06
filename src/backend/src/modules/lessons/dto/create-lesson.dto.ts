@@ -26,6 +26,7 @@ export class CreateLessonDTO {
     practice?: string;
 
     @IsEnum(ELessonStatus)
-    @ApiProperty({ description: "Status of the git theory", example: "DRAFT" })
-    status: ELessonStatus;
+    @IsOptional()
+    @ApiProperty({ description: "Status of the git theory (defaults to DRAFT for pro users, PUBLISHED for admin)", required: false, example: "DRAFT" })
+    status?: ELessonStatus;
 }

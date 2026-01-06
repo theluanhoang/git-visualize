@@ -5,6 +5,7 @@ import { useLessons } from '@/lib/react-query/hooks/use-lessons';
 import LessonViewer from '@/components/common/git-theory/LessonViewer';
 import LessonNavigation from '@/components/common/git-theory/LessonNavigation';
 import PracticeCTA from '@/components/common/git-theory/PracticeCTA';
+import QuizCTA from '@/components/common/git-theory/QuizCTA';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,9 +44,29 @@ export default function LessonPage() {
             <div>
                 <LessonViewer content={lesson.content} />
             </div>
-            <div className="mt-6">
-                <PracticeCTA slug={slug} />
-            </div>
+            
+            {/* Show both CTAs for first lesson and near-last lessons (last 2 lessons) */}
+            {(() => {
+                const currentIndex = sortedLessons.findIndex((l: any) => l.slug === slug);
+                const isFirstLesson = currentIndex === 0;
+                const isNearLast = currentIndex >= sortedLessons.length - 2 && currentIndex >= 0;
+                
+                if (isFirstLesson || isNearLast) {
+                    return (
+                        <div className="mt-6 space-y-4">
+                            <QuizCTA slug={slug} />
+                            <PracticeCTA slug={slug} />
+                        </div>
+                    );
+                }
+                
+                // Show only PracticeCTA for other lessons
+                return (
+                    <div className="mt-6">
+                        <PracticeCTA slug={slug} />
+                    </div>
+                );
+            })()}
             {sortedLessons.length > 0 && (
                 <div className="mt-6">
                     <LessonNavigation

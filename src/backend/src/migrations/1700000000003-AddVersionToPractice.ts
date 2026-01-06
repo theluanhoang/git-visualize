@@ -4,7 +4,10 @@ export class AddVersionToPractice1700000000003 implements MigrationInterface {
     name = 'AddVersionToPractice1700000000003'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "practice" ADD "version" integer NOT NULL DEFAULT 1`);
+        const practiceTable = await queryRunner.getTable('practice');
+        if (practiceTable && !practiceTable.findColumnByName('version')) {
+            await queryRunner.query(`ALTER TABLE "practice" ADD "version" integer NOT NULL DEFAULT 1`);
+        }
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {

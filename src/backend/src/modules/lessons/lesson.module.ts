@@ -15,11 +15,13 @@ import { RatingGateway } from './rating.gateway';
 import { SocketRateLimitService } from './services/socket-rate-limit.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Lesson, LessonView, Rating]),
     forwardRef(() => PracticeModule),
+    SubscriptionModule,
     JwtModule.register({}),
     ConfigModule,
   ],

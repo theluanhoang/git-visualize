@@ -16,7 +16,9 @@ import {
   UserCheck,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CreditCard,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -43,6 +45,8 @@ export function AdminSidebar({
     { name: t('dashboard.title'), href: '/admin', icon: LayoutDashboard },
     { name: t('lessons'), href: '/admin/lessons', icon: BookOpen },
     { name: t('users'), href: '/admin/users', icon: Users },
+    { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
+    { name: 'Payments', href: '/admin/payments', icon: DollarSign },
     { name: t('analytics.title'), href: '/admin/analytics', icon: BarChart3 },
     { name: t('settings.general'), href: '/admin/settings', icon: Settings },
   ];

@@ -5,7 +5,6 @@ import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { useLessons } from '@/lib/react-query/hooks/use-lessons';
 import { usePractice } from '@/lib/react-query/hooks/use-practice';
 import PracticeSession from "@/components/common/practice/PracticeSession";
-import PracticeHeader from "@/components/common/practice/PracticeHeader";
 import { GoalModal } from "@/components/common/practice/GoalModal";
 import { GoalButton } from "@/components/common/practice/GoalButton";
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
@@ -59,16 +58,12 @@ function PracticeSessionPageContent() {
 
   if (error || !selectedPractice) {
     return (
-      <div className="container mx-auto mt-10 px-4">
-        <PracticeHeader 
-          lessonTitle={lesson?.title}
-          lessonDescription={lesson?.description}
-        />
+      <div className="p-4">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-destructive mb-4">{error?.message || t('sessionNotFound')}</p>
             <button
-              onClick={() => router.push(`/practice?lesson=${lessonSlug}`)}
+              onClick={() => router.push(`/${locale}/practice?lesson=${lessonSlug}`)}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
               {t('exitPractice')}
@@ -82,29 +77,22 @@ function PracticeSessionPageContent() {
   return (
     <PrivateRoute showAccessDenied={false}>
       <div className="pb-16">
-        <main className="container mx-auto mt-10 px-4 min-h-[calc(100vh-8rem)]">
-        <PracticeHeader 
-          lessonTitle={lesson?.title}
-          lessonDescription={lesson?.description}
-        />
-        
-        {}
-        <PracticeSession
-          practice={selectedPractice}
-          onComplete={handleCompletePractice}
-          onExit={handleExitPractice}
-        />
-
-        {}
-        {selectedPractice?.goalRepositoryState && (
-          <GoalModal
-            isOpen={showGoalModal}
-            onClose={() => setShowGoalModal(false)}
-            goalRepositoryState={selectedPractice.goalRepositoryState}
-            practiceTitle={selectedPractice.title}
+        <div className="p-4 min-h-[calc(100vh-8rem)]">
+          <PracticeSession
+            practice={selectedPractice}
+            onComplete={handleCompletePractice}
+            onExit={handleExitPractice}
           />
-        )}
-        </main>
+
+          {selectedPractice?.goalRepositoryState && (
+            <GoalModal
+              isOpen={showGoalModal}
+              onClose={() => setShowGoalModal(false)}
+              goalRepositoryState={selectedPractice.goalRepositoryState}
+              practiceTitle={selectedPractice.title}
+            />
+          )}
+        </div>
       </div>
     </PrivateRoute>
   );

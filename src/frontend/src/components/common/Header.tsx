@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { GitFork, Menu, X, Bell, Shield, Crown } from 'lucide-react'
+import { GitFork, Menu, X, Bell, Shield, Crown, BookOpen } from 'lucide-react'
 import React from 'react'
 import { useTranslations } from 'next-intl'
 import ThemeToggle from '@/components/common/ThemeToggle'
@@ -10,6 +10,7 @@ import LanguageSwitcher from '@/components/common/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts'
 import { Badge } from '@/components/ui/badge'
+import { useProAccess } from '@/hooks/use-pro-access'
 
 function Header() {
     const [open, setOpen] = React.useState(false)
@@ -24,6 +25,7 @@ function Header() {
     }, [])
 
     const { isAuthenticated, user, logout, isLoading: authLoading, isAdmin } = useAuth()
+    const { isPro, subscription, expiresAt } = useProAccess()
 
     const handleLogout = async () => {
         await logout()
@@ -62,11 +64,35 @@ function Header() {
                             {t('gitTheory')}
                         </Link>
                         <Link 
+                            href={`/${locale}/quiz`} 
+                            className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors"
+                        >
+                            {t('quiz')}
+                        </Link>
+                        <Link 
                             href={`/${locale}/practice`} 
                             className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors"
                         >
                             {t('practice')}
                         </Link>
+                        {isAuthenticated && isPro && (
+                            <Link 
+                                href={`/${locale}/my-lessons`} 
+                                className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors flex items-center gap-1.5"
+                            >
+                                <BookOpen className="h-4 w-4" />
+                                Bài học của tôi
+                            </Link>
+                        )}
+                        {isAuthenticated && !isPro && !isAdmin && (
+                            <Link 
+                                href={`/${locale}/subscription`} 
+                                className="px-4 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/85 hover:text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors flex items-center gap-1.5"
+                            >
+                                <Crown className="h-4 w-4" />
+                                Nâng cấp Pro
+                            </Link>
+                        )}
                         {isAdmin && (
                             <Link 
                                 href={`/${locale}/admin`} 
@@ -106,6 +132,19 @@ function Header() {
                                     <UserAvatar name={displayName ?? 'User'} url={user?.avatar} />
                                     <div className="hidden xl:flex items-center gap-2">
                                         <span className="truncate max-w-[10rem]">{displayName ?? 'User'}</span>
+                                        {isPro && expiresAt && (
+                                            <Badge variant="secondary" className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white text-xs px-2 py-0.5 flex items-center gap-1">
+                                                <Crown className="h-3 w-3" />
+                                                PRO
+                                                {(() => {
+                                                    const diffDays = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                                    if (diffDays <= 7 && diffDays > 0) {
+                                                        return ` (${diffDays}d)`;
+                                                    }
+                                                    return '';
+                                                })()}
+                                            </Badge>
+                                        )}
                                         {isAdmin && (
                                             <Badge variant="secondary" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-0.5 flex items-center gap-1">
                                                 <Crown className="h-3 w-3" />
@@ -146,7 +185,20 @@ function Header() {
                     <div className="flex flex-col gap-1" role="menu" aria-label={t('mobileNavigation')}>
                         <Link onClick={() => setOpen(false)} href={`/${locale}`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('home')}</Link>
                         <Link onClick={() => setOpen(false)} href={`/${locale}/git-theory`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('gitTheory')}</Link>
+                        <Link onClick={() => setOpen(false)} href={`/${locale}/quiz`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('quiz')}</Link>
                         <Link onClick={() => setOpen(false)} href={`/${locale}/practice`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)]" role="menuitem">{t('practice')}</Link>
+                        {isAuthenticated && isPro && (
+                            <Link onClick={() => setOpen(false)} href={`/${locale}/my-lessons`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)] flex items-center gap-2" role="menuitem">
+                                <BookOpen className="h-4 w-4" />
+                                Bài học của tôi
+                            </Link>
+                        )}
+                        {isAuthenticated && !isPro && !isAdmin && (
+                            <Link onClick={() => setOpen(false)} href={`/${locale}/subscription`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)] flex items-center gap-2" role="menuitem">
+                                <Crown className="h-4 w-4" />
+                                Nâng cấp Pro
+                            </Link>
+                        )}
                         {isAdmin && (
                             <Link onClick={() => setOpen(false)} href={`/${locale}/admin`} className="px-3 py-2 rounded-md text-sm font-medium text-[var(--foreground)]/90 hover:bg-[var(--primary-50)] flex items-center gap-2" role="menuitem">
                                 <Shield className="h-4 w-4" />
