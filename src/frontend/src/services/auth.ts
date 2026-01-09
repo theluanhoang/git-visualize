@@ -45,7 +45,14 @@ export const authApi = {
     return res.data;
   },
   logout: async () => {
-    const res = await api.post(`/api/v1/auth/logout`);
+    const stored = authStorage.load();
+    if (!stored.tokens?.refreshToken || !stored.user?.id) {
+      return { success: true };
+    }
+    const res = await api.post(`/api/v1/auth/logout`, {
+      userId: stored.user.id,
+      refreshToken: stored.tokens.refreshToken,
+    });
     return res.data;
   },
 };
