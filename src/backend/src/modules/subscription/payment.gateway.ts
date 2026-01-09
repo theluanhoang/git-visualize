@@ -59,68 +59,123 @@ export class PaymentGateway
   @SubscribeMessage('subscribe-payment')
   handleSubscribePayment(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { paymentId?: string },
+    @MessageBody() data: { paymentId?: string; userId?: string },
   ) {
+    // Support both paymentId (legacy) and userId (new pattern)
     const paymentId = data?.paymentId;
-    if (!paymentId || typeof paymentId !== 'string') {
-      client.emit('error', {
-        message: 'Invalid paymentId',
-        code: 'INVALID_PAYMENT_ID',
-      });
-      return { success: false, paymentId };
+    const userId = data?.userId || client.userId;
+
+    // If userId is provided or available from client, use PAYMENT:userId pattern
+    if (userId && typeof userId === 'string') {
+      try {
+        const sanitizedUserId = userId.replace(/[^a-zA-Z0-9-]/g, '');
+        if (sanitizedUserId !== userId) {
+          client.emit('error', {
+            message: 'Invalid userId format',
+            code: 'INVALID_USER_ID',
+          });
+          return { success: false, userId };
+        }
+
+        const room = `PAYMENT:${userId}`;
+        client.join(room);
+        this.logger.log(
+          `[PaymentGateway] Client ${client.id} (User: ${client.userId}) subscribed to payment room ${room}`,
+        );
+        return { success: true, userId };
+      } catch (error) {
+        this.logger.error(
+          `Error subscribing client ${client.id} to payment room for user ${userId}: ${error.message}`,
+        );
+        client.emit('error', {
+          message: 'Failed to subscribe payment',
+          code: 'SUBSCRIBE_PAYMENT_FAILED',
+        });
+        return { success: false, userId };
+      }
     }
 
-    const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9-]/g, '');
-    if (sanitizedPaymentId !== paymentId) {
-      client.emit('error', {
-        message: 'Invalid paymentId format',
-        code: 'INVALID_PAYMENT_ID',
-      });
-      return { success: false, paymentId };
+    // Legacy support: paymentId pattern
+    if (paymentId && typeof paymentId === 'string') {
+      const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9-]/g, '');
+      if (sanitizedPaymentId !== paymentId) {
+        client.emit('error', {
+          message: 'Invalid paymentId format',
+          code: 'INVALID_PAYMENT_ID',
+        });
+        return { success: false, paymentId };
+      }
+
+      try {
+        const room = `payment:${paymentId}`;
+        client.join(room);
+        this.logger.log(
+          `[PaymentGateway] Client ${client.id} (User: ${client.userId}) subscribed to payment room ${room} (legacy)`,
+        );
+        return { success: true, paymentId };
+      } catch (error) {
+        this.logger.error(
+          `Error subscribing client ${client.id} to payment ${paymentId}: ${error.message}`,
+        );
+        client.emit('error', {
+          message: 'Failed to subscribe payment',
+          code: 'SUBSCRIBE_PAYMENT_FAILED',
+        });
+        return { success: false, paymentId };
+      }
     }
 
-    try {
-      const room = `payment:${paymentId}`;
-      client.join(room);
-      this.logger.log(
-        `[PaymentGateway] Client ${client.id} (User: ${client.userId}) subscribed to payment room ${room}`,
-      );
-      return { success: true, paymentId };
-    } catch (error) {
-      this.logger.error(
-        `Error subscribing client ${client.id} to payment ${paymentId}: ${error.message}`,
-      );
-      client.emit('error', {
-        message: 'Failed to subscribe payment',
-        code: 'SUBSCRIBE_PAYMENT_FAILED',
-      });
-      return { success: false, paymentId };
-    }
+    client.emit('error', {
+      message: 'Invalid request: either userId or paymentId is required',
+      code: 'INVALID_REQUEST',
+    });
+    return { success: false };
   }
 
   @SubscribeMessage('unsubscribe-payment')
   handleUnsubscribePayment(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { paymentId?: string },
+    @MessageBody() data: { paymentId?: string; userId?: string },
   ) {
+    // Support both paymentId (legacy) and userId (new pattern)
     const paymentId = data?.paymentId;
-    if (!paymentId || typeof paymentId !== 'string') {
-      return { success: false, paymentId };
+    const userId = data?.userId || client.userId;
+
+    // If userId is provided or available from client, use PAYMENT:userId pattern
+    if (userId && typeof userId === 'string') {
+      const room = `PAYMENT:${userId}`;
+      try {
+        client.leave(room);
+        this.logger.log(
+          `[PaymentGateway] Client ${client.id} (User: ${client.userId}) unsubscribed from payment room ${room}`,
+        );
+        return { success: true, userId };
+      } catch (error) {
+        this.logger.error(
+          `Error unsubscribing client ${client.id} from payment room for user ${userId}: ${error.message}`,
+        );
+        return { success: false, userId };
+      }
     }
 
-    const room = `payment:${paymentId}`;
-    try {
-      client.leave(room);
-      this.logger.log(
-        `[PaymentGateway] Client ${client.id} (User: ${client.userId}) unsubscribed from payment room ${room}`,
-      );
-      return { success: true, paymentId };
-    } catch (error) {
-      this.logger.error(
-        `Error unsubscribing client ${client.id} from payment ${paymentId}: ${error.message}`,
-      );
-      return { success: false, paymentId };
+    // Legacy support: paymentId pattern
+    if (paymentId && typeof paymentId === 'string') {
+      const room = `payment:${paymentId}`;
+      try {
+        client.leave(room);
+        this.logger.log(
+          `[PaymentGateway] Client ${client.id} (User: ${client.userId}) unsubscribed from payment room ${room} (legacy)`,
+        );
+        return { success: true, paymentId };
+      } catch (error) {
+        this.logger.error(
+          `Error unsubscribing client ${client.id} from payment ${paymentId}: ${error.message}`,
+        );
+        return { success: false, paymentId };
+      }
     }
+
+    return { success: false };
   }
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -148,11 +203,37 @@ export class PaymentGateway
       try {
         const secret = this.configService.get<string>('auth.jwtAccessSecret');
         const payload = this.jwtService.verify(token, { secret });
-        const userId = payload.sub || payload.userId;
+        
+        // Log payload để debug
+        this.logger.log(`[PaymentGateway] JWT payload decoded`, {
+          socketId: client.id,
+          payload: {
+            sub: payload.sub,
+            email: payload.email,
+            role: payload.role,
+            iat: payload.iat,
+            exp: payload.exp,
+          },
+          timestamp: new Date().toISOString(),
+        });
+        
+        const userId = payload.sub;
 
         if (!userId) {
-          throw new Error('Invalid token payload: missing userId');
+          this.logger.error(`[PaymentGateway] Invalid token payload: missing sub`, {
+            socketId: client.id,
+            payload,
+            timestamp: new Date().toISOString(),
+          });
+          throw new Error('Invalid token payload: missing sub');
         }
+
+        this.logger.log(`[PaymentGateway] User authenticated`, {
+          socketId: client.id,
+          userId,
+          tokenSub: payload.sub,
+          timestamp: new Date().toISOString(),
+        });
 
         client.userId = userId;
         if (!client.data) {
@@ -162,18 +243,24 @@ export class PaymentGateway
 
         // Join user's personal room
         const userRoom = `user:${userId}`;
-        this.logger.log(`[PaymentGateway] Attempting to join user to room`, {
+        // Also join PAYMENT:userId room automatically when connecting
+        const paymentRoom = `PAYMENT:${userId}`;
+        
+        this.logger.log(`[PaymentGateway] Attempting to join user to rooms`, {
           socketId: client.id,
           userId,
-          room: userRoom,
+          userRoom,
+          paymentRoom,
           timestamp: new Date().toISOString(),
         });
 
         client.join(userRoom);
+        client.join(paymentRoom);
 
         // CRITICAL FIX: Verify room membership immediately and use async check
         const rooms = Array.from(client.rooms);
-        const isInRoom = client.rooms.has(userRoom);
+        const isInUserRoom = client.rooms.has(userRoom);
+        const isInPaymentRoom = client.rooms.has(paymentRoom);
 
         // Use async adapter check to verify room membership
         // Socket.io join() is synchronous, but adapter might need a tick
@@ -182,8 +269,10 @@ export class PaymentGateway
           await new Promise<void>((resolve) => setTimeout(resolve, 50));
 
           const adapter = this.server.adapter;
-          let socketCountInRoom = 0;
-          let verifiedInRoom = client.rooms.has(userRoom);
+          let socketCountInUserRoom = 0;
+          let socketCountInPaymentRoom = 0;
+          let verifiedInUserRoom = client.rooms.has(userRoom);
+          let verifiedInPaymentRoom = client.rooms.has(paymentRoom);
 
           try {
             // Try to verify via adapter
@@ -191,26 +280,36 @@ export class PaymentGateway
               // Try fetchSockets for accurate count (Socket.IO v4+)
               if (typeof (adapter as any).fetchSockets === 'function') {
                 try {
-                  const sockets = await (adapter as any).fetchSockets({
+                  const userRoomSockets = await (adapter as any).fetchSockets({
                     rooms: new Set([userRoom]),
                   });
-                  socketCountInRoom = sockets ? sockets.length : 0;
-                  verifiedInRoom = socketCountInRoom > 0;
+                  socketCountInUserRoom = userRoomSockets ? userRoomSockets.length : 0;
+                  verifiedInUserRoom = socketCountInUserRoom > 0;
+                  
+                  const paymentRoomSockets = await (adapter as any).fetchSockets({
+                    rooms: new Set([paymentRoom]),
+                  });
+                  socketCountInPaymentRoom = paymentRoomSockets ? paymentRoomSockets.length : 0;
+                  verifiedInPaymentRoom = socketCountInPaymentRoom > 0;
                 } catch {
                   // Fallback to rooms check
                 }
               }
 
               // Fallback: check adapter.rooms
-              if (socketCountInRoom === 0 && 'rooms' in adapter) {
+              if ((socketCountInUserRoom === 0 || socketCountInPaymentRoom === 0) && 'rooms' in adapter) {
                 const adapterRooms = (adapter as any).rooms;
                 if (
                   adapterRooms &&
                   typeof adapterRooms.get === 'function'
                 ) {
-                  const roomSockets = adapterRooms.get(userRoom);
-                  socketCountInRoom = roomSockets ? roomSockets.size : 0;
-                  verifiedInRoom = socketCountInRoom > 0;
+                  const userRoomSockets = adapterRooms.get(userRoom);
+                  socketCountInUserRoom = userRoomSockets ? userRoomSockets.size : 0;
+                  verifiedInUserRoom = socketCountInUserRoom > 0;
+                  
+                  const paymentRoomSockets = adapterRooms.get(paymentRoom);
+                  socketCountInPaymentRoom = paymentRoomSockets ? paymentRoomSockets.size : 0;
+                  verifiedInPaymentRoom = socketCountInPaymentRoom > 0;
                 }
               }
             }
@@ -223,14 +322,17 @@ export class PaymentGateway
             {
               socketId: client.id,
               userId,
-              room: userRoom,
-              isInRoom: verifiedInRoom,
-              socketCountInRoom,
+              userRoom,
+              paymentRoom,
+              isInUserRoom: verifiedInUserRoom,
+              isInPaymentRoom: verifiedInPaymentRoom,
+              socketCountInUserRoom,
+              socketCountInPaymentRoom,
               timestamp: new Date().toISOString(),
             },
           );
 
-          if (!verifiedInRoom) {
+          if (!verifiedInUserRoom) {
             this.logger.warn(
               `⚠️ Socket ${client.id} may not have joined room ${userRoom} for user ${userId}`,
             );
@@ -239,6 +341,21 @@ export class PaymentGateway
               client.join(userRoom);
               this.logger.log(
                 `Rejoined socket ${client.id} to room ${userRoom}`,
+              );
+            } catch (rejoinError) {
+              this.logger.error(`Failed to rejoin room: ${rejoinError}`);
+            }
+          }
+          
+          if (!verifiedInPaymentRoom) {
+            this.logger.warn(
+              `⚠️ Socket ${client.id} may not have joined room ${paymentRoom} for user ${userId}`,
+            );
+            // Try to rejoin
+            try {
+              client.join(paymentRoom);
+              this.logger.log(
+                `Rejoined socket ${client.id} to room ${paymentRoom}`,
               );
             } catch (rejoinError) {
               this.logger.error(`Failed to rejoin room: ${rejoinError}`);
@@ -254,8 +371,10 @@ export class PaymentGateway
           event: 'payment_socket_connection',
           socketId: client.id,
           userId,
-          room: userRoom,
-          isInRoom,
+          userRoom,
+          paymentRoom,
+          isInUserRoom,
+          isInPaymentRoom,
           allRooms: rooms,
           ip,
           userAgent,
@@ -264,12 +383,16 @@ export class PaymentGateway
 
         // Also log to console for easier debugging
         console.log(
-          `[PaymentGateway] Socket ${client.id} connected for user ${userId}, joined room ${userRoom}`,
+          `[PaymentGateway] Socket ${client.id} connected for user ${userId}, joined rooms ${userRoom} and ${paymentRoom}`,
         );
 
-        if (!isInRoom) {
+        if (!isInUserRoom || !isInPaymentRoom) {
           this.logger.warn(
-            `⚠️ Socket ${client.id} may not have joined room ${userRoom} for user ${userId} (checking immediately after join)`,
+            `⚠️ Socket ${client.id} may not have joined all rooms for user ${userId} (checking immediately after join)`,
+            {
+              isInUserRoom,
+              isInPaymentRoom,
+            },
           );
         }
       } catch (error) {
@@ -351,8 +474,9 @@ export class PaymentGateway
       userId = payment.userId;
     }
 
-    const room = `user:${userId}`;
-    const paymentRoom = `payment:${payment.id}`;
+    const userRoom = `user:${userId}`;
+    const paymentRoom = `PAYMENT:${userId}`;
+    const legacyPaymentRoom = `payment:${payment.id}`;
     const eventData = {
       paymentId: payment.id,
       status: payment.status,
@@ -361,21 +485,23 @@ export class PaymentGateway
     };
 
     this.logger.log(
-      `[emitPaymentCompleted] Preparing to emit payment:completed event to room ${room} for payment ${payment.id}`,
+      `[emitPaymentCompleted] Preparing to emit payment:completed event to rooms ${userRoom} and ${paymentRoom} for payment ${payment.id}`,
       {
         userId,
         paymentId: payment.id,
-        room,
+        userRoom,
+        paymentRoom,
         eventData,
         timestamp: new Date().toISOString(),
       },
     );
     console.log(
-      `[PaymentGateway] 🔔 Emitting payment:completed to room ${room} for user ${userId}, payment ${payment.id}`,
+      `[PaymentGateway] 🔔 Emitting payment:completed to rooms ${userRoom} and ${paymentRoom} for user ${userId}, payment ${payment.id}`,
       {
         userId,
         paymentId: payment.id,
-        room,
+        userRoom,
+        paymentRoom,
         eventData,
         timestamp: new Date().toISOString(),
       },
@@ -385,8 +511,8 @@ export class PaymentGateway
       // In NestJS WebSocket Gateway with namespace, this.server is already the namespace server
       // So we can use it directly without calling .of()
 
-      // Check if room exists and has sockets
-      // Try multiple methods to detect sockets in the room
+      // Check if rooms exist and have sockets
+      // Try multiple methods to detect sockets in the rooms
       const adapter = this.server.adapter;
       let socketCount = 0;
       let allRooms: string[] = [];
@@ -396,8 +522,12 @@ export class PaymentGateway
         if (adapter && typeof adapter === 'object' && 'rooms' in adapter) {
           const rooms = (adapter as any).rooms;
           if (rooms && typeof rooms.get === 'function') {
-            const roomSockets = rooms.get(room);
-            socketCount = roomSockets ? roomSockets.size : 0;
+            // Check both userRoom and paymentRoom
+            const userRoomSockets = rooms.get(userRoom);
+            const paymentRoomSockets = rooms.get(paymentRoom);
+            const userRoomCount = userRoomSockets ? userRoomSockets.size : 0;
+            const paymentRoomCount = paymentRoomSockets ? paymentRoomSockets.size : 0;
+            socketCount = Math.max(userRoomCount, paymentRoomCount);
           }
           if (rooms && typeof rooms.keys === 'function') {
             allRooms = Array.from(rooms.keys() as Iterable<string>);
@@ -415,8 +545,11 @@ export class PaymentGateway
             if (socketsAdapter && socketsAdapter.rooms) {
               const rooms = socketsAdapter.rooms;
               if (rooms && typeof rooms.get === 'function') {
-                const roomSockets = rooms.get(room);
-                const count = roomSockets ? roomSockets.size : 0;
+                const userRoomSockets = rooms.get(userRoom);
+                const paymentRoomSockets = rooms.get(paymentRoom);
+                const userRoomCount = userRoomSockets ? userRoomSockets.size : 0;
+                const paymentRoomCount = paymentRoomSockets ? paymentRoomSockets.size : 0;
+                const count = Math.max(userRoomCount, paymentRoomCount);
                 if (count > 0) {
                   socketCount = count;
                 }
@@ -436,11 +569,12 @@ export class PaymentGateway
       }
 
       this.logger.log(
-        `[emitPaymentCompleted] Room ${room} has ${socketCount} socket(s) in /payments namespace`,
+        `[emitPaymentCompleted] Rooms ${userRoom} and ${paymentRoom} have ${socketCount} socket(s) in /payments namespace`,
         {
           userId,
           paymentId: payment.id,
-          room,
+          userRoom,
+          paymentRoom,
           socketCount,
           allRooms,
           timestamp: new Date().toISOString(),
@@ -454,7 +588,8 @@ export class PaymentGateway
           `[emitPaymentCompleted] Currently connected users in /payments namespace:`,
           {
             userRooms,
-            targetRoom: room,
+            targetUserRoom: userRoom,
+            targetPaymentRoom: paymentRoom,
             targetUserId: userId,
             timestamp: new Date().toISOString(),
           },
@@ -463,7 +598,7 @@ export class PaymentGateway
 
       if (socketCount === 0) {
         this.logger.warn(
-          `⚠️ [emitPaymentCompleted] No sockets in room ${room} for user ${userId}. Event will not be delivered.`,
+          `⚠️ [emitPaymentCompleted] No sockets in rooms ${userRoom} or ${paymentRoom} for user ${userId}. Event will not be delivered.`,
         );
         if (allRooms.length > 0) {
           this.logger.debug(
@@ -478,15 +613,16 @@ export class PaymentGateway
         // But return false to indicate we didn't find sockets
       }
 
-      // Always emit the event to the room in the /payments namespace
+      // Always emit the event to the rooms in the /payments namespace
       // Even if socketCount is 0, because the adapter check might be unreliable
       this.logger.log(
-        `[emitPaymentCompleted] Emitting event 'payment:completed' to room ${room} and ${paymentRoom} with data:`,
+        `[emitPaymentCompleted] Emitting event 'payment:completed' to rooms ${userRoom}, ${paymentRoom}, and ${legacyPaymentRoom} with data:`,
         {
           userId,
           paymentId: payment.id,
-          room,
+          userRoom,
           paymentRoom,
+          legacyPaymentRoom,
           eventData,
           socketCount,
           timestamp: new Date().toISOString(),
@@ -495,9 +631,13 @@ export class PaymentGateway
       this.logger.log(`Event data: ${JSON.stringify(eventData, null, 2)}`);
 
       // CRITICAL FIX: Use both methods to ensure event is delivered
-      // Method 1: Emit to room (standard way)
-      this.server.to(room).emit('payment:completed', eventData);
+      // Method 1: Emit to rooms (standard way)
+      // Emit to user room (for backward compatibility)
+      this.server.to(userRoom).emit('payment:completed', eventData);
+      // Emit to PAYMENT:userId room (new pattern)
       this.server.to(paymentRoom).emit('payment:completed', eventData);
+      // Emit to legacy payment:paymentId room (for backward compatibility)
+      this.server.to(legacyPaymentRoom).emit('payment:completed', eventData);
       
       // Method 2: Also try to emit to all sockets in the namespace and filter by userId
       // This is a backup in case room joining had timing issues
@@ -521,11 +661,13 @@ export class PaymentGateway
       }
 
       this.logger.log(
-        `[emitPaymentCompleted] Event 'payment:completed' emitted to room ${room}`,
+        `[emitPaymentCompleted] Event 'payment:completed' emitted to rooms ${userRoom}, ${paymentRoom}, and ${legacyPaymentRoom}`,
         {
           userId,
           paymentId: payment.id,
-          room,
+          userRoom,
+          paymentRoom,
+          legacyPaymentRoom,
           timestamp: new Date().toISOString(),
         },
       );
@@ -533,22 +675,24 @@ export class PaymentGateway
       const success = socketCount > 0;
       if (success) {
         this.logger.log(
-          `✅ [emitPaymentCompleted] Successfully emitted payment:completed event to user ${userId} for payment ${payment.id} (${socketCount} socket(s) in room)`,
+          `✅ [emitPaymentCompleted] Successfully emitted payment:completed event to user ${userId} for payment ${payment.id} (${socketCount} socket(s) in rooms)`,
           {
             userId,
             paymentId: payment.id,
-            room,
+            userRoom,
+            paymentRoom,
             socketCount,
             eventData,
             timestamp: new Date().toISOString(),
           },
         );
         console.log(
-          `[PaymentGateway] ✅ Event emitted successfully to room ${room} (${socketCount} socket(s))`,
+          `[PaymentGateway] ✅ Event emitted successfully to rooms ${userRoom} and ${paymentRoom} (${socketCount} socket(s))`,
           {
             userId,
             paymentId: payment.id,
-            room,
+            userRoom,
+            paymentRoom,
             socketCount,
             eventData,
             timestamp: new Date().toISOString(),
@@ -556,11 +700,12 @@ export class PaymentGateway
         );
       } else {
         this.logger.warn(
-          `⚠️ [emitPaymentCompleted] Emitted event to room ${room} but no sockets were detected. Event may not be delivered.`,
+          `⚠️ [emitPaymentCompleted] Emitted event to rooms ${userRoom} and ${paymentRoom} but no sockets were detected. Event may not be delivered.`,
           {
             userId,
             paymentId: payment.id,
-            room,
+            userRoom,
+            paymentRoom,
             socketCount: 0,
             allRooms,
             eventData,
@@ -568,11 +713,12 @@ export class PaymentGateway
           },
         );
         console.log(
-          `[PaymentGateway] ⚠️ Event emitted to room ${room} but no sockets detected`,
+          `[PaymentGateway] ⚠️ Event emitted to rooms ${userRoom} and ${paymentRoom} but no sockets detected`,
           {
             userId,
             paymentId: payment.id,
-            room,
+            userRoom,
+            paymentRoom,
             allRooms,
             eventData,
             timestamp: new Date().toISOString(),
@@ -596,7 +742,8 @@ export class PaymentGateway
    */
   emitPaymentStatusUpdate(userId: string, payment: any) {
     const userRoom = `user:${userId}`;
-    const paymentRoom = `payment:${payment.id}`;
+    const paymentRoom = `PAYMENT:${userId}`;
+    const legacyPaymentRoom = `payment:${payment.id}`;
     this.server.to(userRoom).emit('payment:status-updated', {
       paymentId: payment.id,
       status: payment.status,
@@ -607,8 +754,13 @@ export class PaymentGateway
       status: payment.status,
       amount: payment.amount,
     });
+    this.server.to(legacyPaymentRoom).emit('payment:status-updated', {
+      paymentId: payment.id,
+      status: payment.status,
+      amount: payment.amount,
+    });
     this.logger.log(
-      `Emitted payment:status-updated event to user ${userId} and room ${paymentRoom} for payment ${payment.id}`,
+      `Emitted payment:status-updated event to user ${userId} and rooms ${paymentRoom} and ${legacyPaymentRoom} for payment ${payment.id}`,
     );
   }
 }

@@ -116,10 +116,10 @@ export class RatingGateway
       try {
         const secret = this.configService.get<string>('auth.jwtAccessSecret');
         const payload = this.jwtService.verify(token, { secret });
-        const userId = payload.sub || payload.userId;
+        const userId = payload.sub;
 
         if (!userId) {
-          throw new Error('Invalid token payload: missing userId');
+          throw new Error('Invalid token payload: missing sub');
         }
 
         client.userId = userId;

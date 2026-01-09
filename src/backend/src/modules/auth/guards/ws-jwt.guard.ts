@@ -44,7 +44,7 @@ export class WsJwtGuard implements CanActivate {
         const secret = this.configService.get<string>('auth.jwtAccessSecret');
         const payload = this.jwtService.verify(token, { secret });
 
-        const userId = payload.sub || payload.userId;
+        const userId = payload.sub;
         if (!userId) {
           throw new WsException('Unauthorized: Invalid token payload');
         }

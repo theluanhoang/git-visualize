@@ -151,13 +151,81 @@ export class PaymentService {
       throw new BadRequestException('Invalid webhook signature');
     }
 
+    // Parse webhook data structure (có thể là { data: { id, ... } } hoặc { id, ... })
+    const webhookId = (webhookData as any).data?.id ?? webhookData.id;
+    const webhookTid = (webhookData as any).data?.tid ?? webhookData.tid;
+    
+    this.logger.log(`[handleCassoWebhook] Searching for payment`, {
+      webhookId,
+      webhookTid,
+      webhookDataStructure: {
+        hasId: 'id' in webhookData,
+        hasData: 'data' in webhookData,
+        dataId: (webhookData as any).data?.id,
+        dataTid: (webhookData as any).data?.tid,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    // Parse reference, amount và description từ webhook
+    const webhookReference = (webhookData as any).data?.reference ?? webhookData.reference;
+    const webhookAmount = (webhookData as any).data?.amount ?? webhookData.amount;
+    const webhookDescription = (webhookData as any).data?.description ?? webhookData.description;
+
     // Tìm payment theo transactionId hoặc cassoTransactionId
     let payment = await this.paymentRepository.findOne({
       where: [
-        { transactionId: webhookData.id },
-        { cassoTransactionId: webhookData.tid },
+        { transactionId: webhookId?.toString() },
+        { cassoTransactionId: webhookTid?.toString() },
       ],
     });
+
+    // Fallback: Nếu không tìm thấy, thử tìm theo amount match với payment PENDING
+    if (!payment) {
+      this.logger.log(`[handleCassoWebhook] Payment not found by transactionId, trying to find by amount match`, {
+        webhookAmount,
+        webhookId,
+        webhookTid,
+        webhookReference,
+      });
+      
+      // Tìm payment PENDING với amount khớp (cho phép sai số 1 VND)
+      // Ưu tiên payment gần nhất và chưa có transactionId
+      const tolerance = 1;
+      const allPayments = await this.paymentRepository.find({
+        where: { 
+          status: EPaymentStatus.PENDING,
+        },
+        order: { createdAt: 'DESC' },
+        take: 100, // Limit để tránh query quá nhiều
+      });
+      
+      // Filter payments với amount khớp (cho phép sai số tolerance)
+      const matchingPayments = allPayments.filter(p => {
+        const amountDiff = Math.abs(Number(p.amount) - Number(webhookAmount));
+        return amountDiff <= tolerance;
+      });
+      
+      // Ưu tiên payment chưa có transactionId (chưa được map với transaction nào)
+      payment = matchingPayments.find(p => !p.transactionId) || matchingPayments[0];
+      
+      if (payment) {
+        this.logger.log(`[handleCassoWebhook] Found payment by amount match`, {
+          paymentId: payment.id,
+          paymentAmount: payment.amount,
+          webhookAmount,
+          userId: payment.userId,
+          paymentTransactionId: payment.transactionId,
+          matchedPaymentsCount: matchingPayments.length,
+        });
+      } else {
+        this.logger.warn(`[handleCassoWebhook] No payment found by amount match`, {
+          webhookAmount,
+          searchedPaymentsCount: allPayments.length,
+          matchingPaymentsCount: matchingPayments.length,
+        });
+      }
+    }
 
     if (!payment) {
       // Không tìm thấy payment tương ứng với transaction từ Casso.
@@ -167,10 +235,15 @@ export class PaymentService {
       this.logger.error(
         `[handleCassoWebhook] Payment not found for transaction. Not creating new payment to avoid mismatched paymentId.`,
         {
-          webhookId: webhookData.id,
-          webhookTid: webhookData.tid,
-          reference: webhookData.reference,
-          description: webhookData.description,
+          webhookId,
+          webhookTid,
+          webhookReference,
+          webhookAmount,
+          description: (webhookData as any).data?.description ?? webhookData.description,
+          searchedFields: {
+            transactionId: webhookId?.toString(),
+            cassoTransactionId: webhookTid?.toString(),
+          },
         },
       );
       throw new NotFoundException(
@@ -178,14 +251,21 @@ export class PaymentService {
       );
     }
 
+    // Payment đã được tìm thấy, log thông tin
+    this.logger.log(`[handleCassoWebhook] Payment found`, {
+      paymentId: payment.id,
+      paymentUserId: payment.userId,
+      paymentAmount: payment.amount,
+      paymentStatus: payment.status,
+      paymentTransactionId: payment.transactionId,
+      paymentCassoTransactionId: payment.cassoTransactionId,
+      webhookId,
+      webhookTid,
+      timestamp: new Date().toISOString(),
+    });
+
     // Cập nhật payment với thông tin từ webhook
-    // Casso webhook có thể có nested structure: { data: { amount: ... } } hoặc { amount: ... }
-    const webhookAmount =
-      (webhookData as any).data?.amount ?? webhookData.amount;
-    const webhookDescription =
-      (webhookData as any).data?.description ?? webhookData.description;
-    const webhookId = (webhookData as any).data?.id ?? webhookData.id;
-    const webhookTid = (webhookData as any).data?.tid ?? webhookData.tid;
+    // webhookAmount, webhookDescription, webhookId và webhookTid đã được parse ở trên
 
     payment.amount = webhookAmount || payment.amount;
     payment.description = webhookDescription || payment.description;
