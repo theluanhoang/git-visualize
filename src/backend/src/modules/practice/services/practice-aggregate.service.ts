@@ -34,7 +34,7 @@ export class PracticeAggregateService implements IPracticeService {
     | Practice
     | { data: Practice[]; total: number; limit: number; offset: number }
   > {
-    const { limit = 20, offset = 0, id, includeRelations = true } = query;
+    const { limit = 20, offset = 0, id, includeRelations = false } = query; // Changed default to false
 
     // Build query with filters
     const queryBuilder = this.buildQueryBuilder(query, includeRelations);
@@ -68,10 +68,12 @@ export class PracticeAggregateService implements IPracticeService {
   }
 
   async getPracticesByLessonSlug(lessonSlug: string): Promise<Practice[]> {
+    // Don't load relations by default for better performance
+    // Relations should be loaded only when viewing practice details
     const result = await this.getPractices({
       lessonSlug,
       isActive: true,
-      includeRelations: true,
+      includeRelations: false, // Changed to false for faster loading
     });
 
     if ('data' in result) {
@@ -327,11 +329,10 @@ export class PracticeAggregateService implements IPracticeService {
       'practice',
     );
 
-    // Add distinct to avoid duplicate rows from joins
-    queryBuilder.distinct(true);
-
     // Add relations if needed
     if (includeRelations) {
+      // Only use distinct when loading relations to avoid duplicate rows from joins
+      queryBuilder.distinct(true);
       queryBuilder
         .leftJoinAndSelect('practice.lesson', 'lesson')
         .leftJoinAndSelect('practice.instructions', 'instructions')
@@ -340,7 +341,16 @@ export class PracticeAggregateService implements IPracticeService {
         .leftJoinAndSelect('practice.validationRules', 'validationRules')
         .leftJoinAndSelect('practice.tags', 'tags');
     } else {
-      queryBuilder.leftJoin('practice.lesson', 'lesson');
+      // When not loading relations, only join tables we need for filtering
+      // Join lesson if we need to filter by slug, status, or search in lesson title
+      if (lessonSlug || publishedOnly !== false || q) {
+        queryBuilder.leftJoin('practice.lesson', 'lesson');
+      }
+      // Join tags only if we need to filter by tag
+      if (tag) {
+        queryBuilder.leftJoin('practice.tags', 'tags');
+      }
+      // No distinct needed when not loading relations - improves performance significantly
     }
 
     // Apply filters
