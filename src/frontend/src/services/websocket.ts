@@ -566,6 +566,58 @@ class WebSocketService {
     });
   }
 
+  subscribeToPaymentByUserId(userId: string): Promise<{ success: boolean; userId: string }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Subscribe payment by userId timeout'));
+      }, 5000);
+
+      this.socket.emit(SocketEvents.CLIENT_TO_SERVER.SUBSCRIBE_PAYMENT, { userId }, (response: any) => {
+        clearTimeout(timeout);
+        
+        if (response && response.success === true) {
+          resolve(response);
+        } else if (response && response.success === false) {
+          reject(new Error(response.message || 'Failed to subscribe payment by userId'));
+        } else {
+          const error = response?.error || response;
+          reject(new Error(error?.message || 'Failed to subscribe payment by userId'));
+        }
+      });
+    });
+  }
+
+  unsubscribeFromPaymentByUserId(userId: string): Promise<{ success: boolean; userId: string }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Unsubscribe payment by userId timeout'));
+      }, 5000);
+
+      this.socket.emit(SocketEvents.CLIENT_TO_SERVER.UNSUBSCRIBE_PAYMENT, { userId }, (response: any) => {
+        clearTimeout(timeout);
+        
+        if (response && response.success === true) {
+          resolve(response);
+        } else if (response && response.success === false) {
+          reject(new Error(response.message || 'Failed to unsubscribe payment by userId'));
+        } else {
+          const error = response?.error || response;
+          reject(new Error(error?.message || 'Failed to unsubscribe payment by userId'));
+        }
+      });
+    });
+  }
+
   isConnected(): boolean {
     return this.socket?.connected ?? false;
   }

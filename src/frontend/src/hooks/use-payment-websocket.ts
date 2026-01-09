@@ -8,17 +8,18 @@ import { SocketEvents } from '@/constants/socket-events';
 
 interface UsePaymentWebSocketOptions {
   enabled?: boolean;
-  paymentId?: string;
+  userId?: string;
   onPaymentCompleted?: (payment: { paymentId: string; status: string; amount: number; subscriptionId: string | null }) => void;
 }
 
 /**
  * WebSocket-only payment notification hook
  * Uses Socket.IO for real-time payment completion notifications
+ * Joins PAYMENT:userId room instead of payment:paymentId room
  */
 export const usePaymentWebSocket = ({ 
   enabled = true,
-  paymentId,
+  userId,
   onPaymentCompleted,
 }: UsePaymentWebSocketOptions = {}) => {
   const queryClient = useQueryClient();
@@ -43,7 +44,7 @@ export const usePaymentWebSocket = ({
       status: data.status,
       amount: data.amount,
       subscriptionId: data.subscriptionId,
-      expectedPaymentId: paymentId,
+      userId,
       timestamp: new Date().toISOString(),
     });
 
@@ -56,15 +57,7 @@ export const usePaymentWebSocket = ({
       return;
     }
 
-    // If paymentId is specified, only process if it matches
-    if (paymentId && data.paymentId !== paymentId) {
-      console.log(`⚠️ [PaymentWebSocket] Payment ID mismatch, skipping:`, {
-        receivedPaymentId: data.paymentId,
-        expectedPaymentId: paymentId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    // Process all payments for this user (no paymentId filter needed since we're using userId room)
 
     // Mark as processed immediately to prevent race conditions
     processedPaymentIdsRef.current.add(data.paymentId);
@@ -97,12 +90,12 @@ export const usePaymentWebSocket = ({
     } else {
       console.log(`⚠️ [PaymentWebSocket] No onPaymentCompleted callback provided`);
     }
-  }, [paymentId, queryClient]);
+  }, [queryClient, userId]);
 
   useEffect(() => {
     console.log('🔌 [PaymentWebSocket] useEffect triggered', {
       enabled,
-      paymentId,
+      userId,
       timestamp: new Date().toISOString(),
     });
 
@@ -118,11 +111,37 @@ export const usePaymentWebSocket = ({
     }
 
     tokenRef.current = localStorageHelpers.getItem(LOCALSTORAGE_KEYS.AUTH.ACCESS_TOKEN);
+    
+    // Decode token để kiểm tra userId (chỉ để debug, không verify signature)
+    let tokenSub: string | null = null;
+    if (tokenRef.current) {
+      try {
+        const tokenParts = tokenRef.current.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          tokenSub = payload.sub || null;
+        }
+      } catch (error) {
+        console.warn('⚠️ [PaymentWebSocket] Could not decode token:', error);
+      }
+    }
+    
     console.log('🔑 [PaymentWebSocket] Token retrieved:', {
       hasToken: !!tokenRef.current,
       tokenLength: tokenRef.current?.length,
+      tokenSub,
+      expectedUserId: userId,
+      userIdMatch: tokenSub === userId,
       timestamp: new Date().toISOString(),
     });
+    
+    if (tokenSub && tokenSub !== userId) {
+      console.error('❌ [PaymentWebSocket] Token sub mismatch!', {
+        tokenSub,
+        expectedUserId: userId,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     const handlePaymentCompleted = (data: { 
       paymentId: string; 
@@ -133,8 +152,7 @@ export const usePaymentWebSocket = ({
       console.log('💰 [PaymentWebSocket] handlePaymentCompleted called:', {
         event: 'payment:completed',
         data,
-        expectedPaymentId: paymentId,
-        matches: paymentId ? data.paymentId === paymentId : 'no filter',
+        userId,
         timestamp: new Date().toISOString(),
       });
       processPaymentCompleted(data);
@@ -159,7 +177,7 @@ export const usePaymentWebSocket = ({
     const setupConnection = async () => {
       console.log('🔌 [PaymentWebSocket] Starting connection setup...', {
         enabled,
-        paymentId,
+        userId,
         namespace: '/payments',
         timestamp: new Date().toISOString(),
       });
@@ -188,17 +206,17 @@ export const usePaymentWebSocket = ({
         updateConnectionState();
 
         const subscribePaymentRoom = async () => {
-          if (paymentId && !subscribedRef.current) {
+          if (userId && !subscribedRef.current) {
             try {
-              console.log('🪝 [PaymentWebSocket] Subscribing to payment room', { paymentId });
-              const result = await websocketService.subscribeToPayment(paymentId);
+              console.log('🪝 [PaymentWebSocket] Subscribing to payment room by userId', { userId });
+              const result = await websocketService.subscribeToPaymentByUserId(userId);
               if (result.success) {
                 subscribedRef.current = true;
-                console.log('✅ [PaymentWebSocket] Subscribed to payment room', { paymentId });
+                console.log('✅ [PaymentWebSocket] Subscribed to payment room', { userId, room: `PAYMENT:${userId}` });
               }
             } catch (error) {
               console.error('❌ [PaymentWebSocket] Failed to subscribe to payment room', {
-                paymentId,
+                userId,
                 error,
               });
             }
@@ -342,8 +360,8 @@ export const usePaymentWebSocket = ({
         timestamp: new Date().toISOString(),
       });
       tokenUnsubscribe();
-      if (subscribedRef.current && paymentId) {
-        websocketService.unsubscribeFromPayment(paymentId).catch(() => {});
+      if (subscribedRef.current && userId) {
+        websocketService.unsubscribeFromPaymentByUserId(userId).catch(() => {});
         subscribedRef.current = false;
       }
       
@@ -365,7 +383,7 @@ export const usePaymentWebSocket = ({
       // The cleanup function below will handle proper cleanup
       console.log('🧹 [PaymentWebSocket] Cleanup completed (socket remains connected for late webhooks)');
     };
-  }, [enabled, queryClient, processPaymentCompleted]);
+  }, [enabled, userId, queryClient, processPaymentCompleted]);
 
   return {
     isConnected: isConnected || websocketService.isConnected(),

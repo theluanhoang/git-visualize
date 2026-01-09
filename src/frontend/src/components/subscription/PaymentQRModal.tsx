@@ -15,6 +15,7 @@ import { Copy, CheckCircle2, Clock, XCircle, QrCode, Building2 } from 'lucide-re
 import { Payment } from '@/services/payment';
 import { usePayment } from '@/hooks/use-payment';
 import { usePaymentWebSocket } from '@/hooks/use-payment-websocket';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 // Helper để format bank name
@@ -47,7 +48,23 @@ interface PaymentQRModalProps {
 export function PaymentQRModal({ payment, open, onOpenChange, onPaymentSuccess }: PaymentQRModalProps) {
   const [copied, setCopied] = useState(false);
   const [hasTriggeredSuccess, setHasTriggeredSuccess] = useState(false);
+  const { user } = useAuth();
   const paymentId = payment?.id;
+  const userId = user?.id;
+
+  // Debug: Log userId để kiểm tra
+  React.useEffect(() => {
+    if (open && userId) {
+      console.log('🔍 [PaymentQRModal] User info:', {
+        userId,
+        userEmail: user?.email,
+        paymentId,
+        paymentUserId: payment?.userId,
+        userIdMatch: userId === payment?.userId,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, [open, userId, user?.email, paymentId, payment?.userId]);
 
   // Chỉ fetch payment một lần khi mở modal
   const { data: currentPayment, refetch } = usePayment(paymentId || '', {
@@ -55,16 +72,12 @@ export function PaymentQRModal({ payment, open, onOpenChange, onPaymentSuccess }
   });
 
   const displayPayment: Payment | null = (currentPayment as Payment | undefined) || payment;
-  const shouldListenForPayment =
-    !!paymentId &&
-    !hasTriggeredSuccess &&
-    displayPayment?.status === 'PENDING';
 
   // Sử dụng WebSocket để nhận thông báo thanh toán real-time
-  // Duy trì connection kể cả khi modal đóng miễn là payment vẫn ở trạng thái PENDING
+  // Join socket khi mở modal (không cần đợi payment PENDING)
   const { isConnected: isSocketConnected } = usePaymentWebSocket({
-    enabled: shouldListenForPayment,
-    paymentId: paymentId || undefined,
+    enabled: open && !!userId,
+    userId: userId || undefined,
     onPaymentCompleted: (data) => {
       console.log('🎉 PaymentQRModal: Payment completed callback received', {
         receivedPaymentId: data.paymentId,
