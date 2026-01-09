@@ -439,6 +439,7 @@ export class GitEngineService {
             added.push(filePath);
           }
         } else if (file.status === FileStatus.STAGED) {
+          /* empty */
         }
       } else {
         const newFile: IFileState = {
@@ -976,6 +977,7 @@ export class GitEngineService {
   }
 
   private levenshteinDistance(a: string, b: string): number {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
       Array(b.length + 1).fill(0),
     );
@@ -1207,11 +1209,20 @@ export class GitEngineService {
     }
 
     // Compare working directory
+    // Only check files that have been changed (not unmodified files)
     const goalWorking = goalState.workingDirectory || [];
     const userWorking = userState.workingDirectory || [];
 
+    // Filter out unmodified files from user working directory
+    // Unmodified files are not relevant to practice validation
+    const userWorkingChanged = userWorking.filter(
+      (f) => f.status !== FileStatus.UNMODIFIED,
+    );
+
     const goalWorkingMap = new Map(goalWorking.map((f) => [f.path, f.status]));
-    const userWorkingMap = new Map(userWorking.map((f) => [f.path, f.status]));
+    const userWorkingMap = new Map(
+      userWorkingChanged.map((f) => [f.path, f.status]),
+    );
 
     for (const [path, status] of goalWorkingMap.entries()) {
       if (!userWorkingMap.has(path)) {
@@ -1236,6 +1247,7 @@ export class GitEngineService {
       }
     }
 
+    // Only check for extra files that have been changed (not unmodified)
     for (const [path] of userWorkingMap.entries()) {
       if (!goalWorkingMap.has(path)) {
         differences.push({
