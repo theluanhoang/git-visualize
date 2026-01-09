@@ -175,6 +175,19 @@ jobs:
             docker compose -f docker-compose.vercel.yml pull
             docker compose -f docker-compose.vercel.yml up -d --remove-orphans
 
+            echo "Cleaning up unused Docker images on EC2..."
+            # Remove dangling images (layers not referenced by any tag)
+            docker image prune -f || true
+
+            # Keep only the 3 most recent backend images, remove older tags
+            if [ -n "${{ env.DOCKER_BACKEND_IMAGE_NAME }}" ]; then
+              echo "Pruning old backend images for ${{ env.DOCKER_BACKEND_IMAGE_NAME }}, keeping latest 3..."
+              # 'docker images' is sorted by creation time (newest first) by default
+              docker images "${{ env.DOCKER_BACKEND_IMAGE_NAME }}" --format '{{.Repository}}:{{.Tag}}' \
+                | tail -n +4 \
+                | xargs -r docker rmi || true
+            fi
+
             docker compose -f docker-compose.vercel.yml ps
             echo "Deployment completed!"
 
