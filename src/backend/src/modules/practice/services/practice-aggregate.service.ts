@@ -34,7 +34,7 @@ export class PracticeAggregateService implements IPracticeService {
     | Practice
     | { data: Practice[]; total: number; limit: number; offset: number }
   > {
-    const { limit = 20, offset = 0, id, includeRelations = false } = query; // Changed default to false
+    const { limit = 20, offset = 0, id, includeRelations = false } = query;
 
     // Build query with filters
     const queryBuilder = this.buildQueryBuilder(query, includeRelations);
@@ -50,7 +50,13 @@ export class PracticeAggregateService implements IPracticeService {
 
     // Pagination for multiple results
     queryBuilder.skip(offset).take(limit);
-    const [practices, total] = await queryBuilder.getManyAndCount();
+
+    // Optimization: Execute getMany and getCount in parallel for better performance
+    // This is faster than getManyAndCount() which executes sequentially
+    const [practices, total] = await Promise.all([
+      queryBuilder.getMany(),
+      queryBuilder.getCount(),
+    ]);
 
     return {
       data: practices,
@@ -329,6 +335,23 @@ export class PracticeAggregateService implements IPracticeService {
       'practice',
     );
 
+    // Optimization: Select only needed columns when not loading relations
+    if (!includeRelations) {
+      queryBuilder.select([
+        'practice.id',
+        'practice.title',
+        'practice.scenario',
+        'practice.difficulty',
+        'practice.estimatedTime',
+        'practice.isActive',
+        'practice.order',
+        'practice.views',
+        'practice.completions',
+        'practice.createdAt',
+        'practice.updatedAt',
+      ]);
+    }
+
     // Add relations if needed
     if (includeRelations) {
       // Only use distinct when loading relations to avoid duplicate rows from joins
@@ -341,14 +364,15 @@ export class PracticeAggregateService implements IPracticeService {
         .leftJoinAndSelect('practice.validationRules', 'validationRules')
         .leftJoinAndSelect('practice.tags', 'tags');
     } else {
-      // When not loading relations, only join tables we need for filtering
+      // When not loading relations, use INNER JOIN for better performance when we have filters
       // Join lesson if we need to filter by slug, status, or search in lesson title
       if (lessonSlug || publishedOnly !== false || q) {
-        queryBuilder.leftJoin('practice.lesson', 'lesson');
+        // Use INNER JOIN instead of LEFT JOIN for better performance when we have conditions
+        queryBuilder.innerJoin('practice.lesson', 'lesson');
       }
       // Join tags only if we need to filter by tag
       if (tag) {
-        queryBuilder.leftJoin('practice.tags', 'tags');
+        queryBuilder.innerJoin('practice.tags', 'tags');
       }
       // No distinct needed when not loading relations - improves performance significantly
     }
