@@ -106,6 +106,16 @@ export class PracticesService {
     return response.data.data || [];
   }
 
+  static async getPracticesOfLesson(lessonSlug: string): Promise<Practice[]> {
+    const response = await api.get(`/api/v1/practices/lesson/${lessonSlug}`);
+    return response.data;
+  }
+
+  static async getPracticeDetails(id: string): Promise<Practice> {
+    const response = await api.get(`/api/v1/practices/${id}/details`);
+    return response.data;
+  }
+
   static async getPracticesByDifficulty(difficulty: number): Promise<Practice[]> {
     const response = await api.get(`/api/v1/practices?difficulty=${difficulty}&includeRelations=true`);
     return response.data.data || [];

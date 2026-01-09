@@ -12,6 +12,16 @@ export const usePractices = (query: GetPracticesQuery & { publishedOnly?: boolea
   });
 };
 
+export const usePracticesOfLesson = (lessonSlug: string | undefined, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: practiceKeys.lesson(lessonSlug || ''),
+    queryFn: () => PracticesService.getPracticesOfLesson(lessonSlug!),
+    enabled: !!lessonSlug && (options?.enabled !== false),
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+  });
+};
+
 export const useIncrementViews = () => {
   const queryClient = useQueryClient();
   

@@ -56,6 +56,28 @@ export class PracticeController {
     return this.practiceAggregateService.getPractices(query);
   }
 
+  @Get('lesson/:lessonSlug')
+  @ApiOperation({ summary: 'Get practices of a lesson (without relations)' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of practices for the lesson',
+  })
+  @ApiResponse({ status: 404, description: 'Lesson not found' })
+  async getPracticesOfLesson(@Param('lessonSlug') lessonSlug: string) {
+    return await this.practiceAggregateService.getPracticesOfLesson(lessonSlug);
+  }
+
+  @Get(':id/details')
+  @ApiOperation({ summary: 'Get practice details with full relations' })
+  @ApiResponse({
+    status: 200,
+    description: 'Practice with all relations (instructions, hints, etc.)',
+  })
+  @ApiResponse({ status: 404, description: 'Practice not found' })
+  async getPracticeDetails(@Param('id') id: string) {
+    return await this.practiceAggregateService.getPracticeDetails(id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, AdminOrProGuard)
   @ApiBearerAuth()

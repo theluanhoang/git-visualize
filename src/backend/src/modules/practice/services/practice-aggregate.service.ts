@@ -99,6 +99,35 @@ export class PracticeAggregateService implements IPracticeService {
     return [result];
   }
 
+  async getPracticesOfLesson(lessonSlug: string): Promise<Practice[]> {
+    // Get practices of a lesson without relations for list view
+    const result = await this.getPractices({
+      lessonSlug,
+      isActive: true,
+      includeRelations: false, // No relations for list view
+      publishedOnly: true,
+    });
+
+    if ('data' in result) {
+      return result.data;
+    }
+    return [result];
+  }
+
+  async getPracticeDetails(id: string): Promise<Practice> {
+    // Get practice with full relations for detail view
+    const practice = await this.getPractices({
+      id,
+      includeRelations: true, // Full relations for detail view
+    });
+
+    if (!practice || (typeof practice === 'object' && 'data' in practice)) {
+      throw new NotFoundException('Practice not found');
+    }
+
+    return practice;
+  }
+
   async createPractice(
     createPracticeDTO: CreatePracticeDTO,
   ): Promise<Practice> {

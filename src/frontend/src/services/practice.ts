@@ -45,6 +45,24 @@ export const PracticesService = {
     }
   },
 
+  async getPracticeDetails(id: string) {
+    try {
+      const res = await api.get(`/api/v1/practices/${id}/details`);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getPracticesOfLesson(lessonSlug: string) {
+    try {
+      const res = await api.get(`/api/v1/practices/lesson/${lessonSlug}`);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   async create(data: PracticeFormData & { lessonId: string }) {
     const payload = {
       lessonId: data.lessonId,

@@ -37,6 +37,7 @@ export const practiceKeys = {
   list: (params?: any) => [...practiceKeys.lists(), params] as const,
   details: () => [...practiceKeys.all, 'detail'] as const,
   detail: (id: string) => [...practiceKeys.details(), id] as const,
+  lesson: (lessonSlug: string) => [...practiceKeys.all, 'lesson', lessonSlug] as const,
 } as const;
 
 export const quizKeys = {

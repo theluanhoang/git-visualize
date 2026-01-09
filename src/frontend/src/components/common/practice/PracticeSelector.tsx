@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, X } from 'lucide-react';
-import { usePractices } from '@/lib/react-query/hooks/use-practices';
+import { usePracticesOfLesson } from '@/lib/react-query/hooks/use-practices';
 import { usePractice } from '@/lib/react-query/hooks/use-practice';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Practice } from '@/services/practices';
@@ -32,19 +32,21 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
   const pageSize = 9; // Show more items in grid view
 
   // Only load practices when a lesson is selected
-  // Don't include relations for list view - only load when viewing details
-  const { data: practicesData, isLoading } = usePractices({ 
-    includeRelations: false, // Set to false for faster loading - relations only needed for details
-    lessonSlug: lessonSlug || undefined,
-    difficulty: typeof difficultyFilter === 'number' ? difficultyFilter : undefined,
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
-    enabled: !!lessonSlug, // Only load when lessonSlug is available
-  });
+  // Use getPracticesOfLesson API (no relations) for list view
+  const { data: practicesData, isLoading } = usePracticesOfLesson(
+    lessonSlug || undefined,
+    { enabled: !!lessonSlug }
+  );
 
-  const practices = useMemo(() => (
-    Array.isArray(practicesData) ? practicesData : (practicesData as { data: Practice[] })?.data || []
-  ), [practicesData]);
+  const practices = useMemo(() => {
+    if (!practicesData) return [];
+    // Filter by difficulty if needed
+    let filtered = Array.isArray(practicesData) ? practicesData : [];
+    if (typeof difficultyFilter === 'number') {
+      filtered = filtered.filter((p: Practice) => p.difficulty === difficultyFilter);
+    }
+    return filtered;
+  }, [practicesData, difficultyFilter]);
 
   const selectedPracticeFromList = useMemo(() => {
     if (!selectedPracticeId) return null;
@@ -58,12 +60,23 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
   );
 
   const displayPractice = selectedPracticeWithRelations || selectedPracticeFromList;
-  const totalItems = (practicesData as { total?: number })?.total ?? practices.length;
+  
+  // Filter practices by search term
+  const filteredPractices = useMemo(() => 
+    practices.filter((practice: Practice) =>
+      practice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      practice.scenario.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [practices, searchTerm]);
+  
+  // Paginate filtered practices
+  const displayedPractices = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredPractices.slice(start, end);
+  }, [filteredPractices, page, pageSize]);
+  
+  const totalItems = filteredPractices.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const displayedPractices = useMemo(() => practices.filter((practice: Practice) =>
-    practice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    practice.scenario.toLowerCase().includes(searchTerm.toLowerCase())
-  ), [practices, searchTerm]);
 
   const handleSelectPractice = (practice: Practice) => {
     setSelectedPracticeId(practice.id);
