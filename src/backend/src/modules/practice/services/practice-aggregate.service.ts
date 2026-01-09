@@ -51,19 +51,30 @@ export class PracticeAggregateService implements IPracticeService {
     // Pagination for multiple results
     queryBuilder.skip(offset).take(limit);
 
-    // Optimization: Execute getMany and getCount in parallel for better performance
-    // This is faster than getManyAndCount() which executes sequentially
-    const [practices, total] = await Promise.all([
-      queryBuilder.getMany(),
-      queryBuilder.getCount(),
-    ]);
+    if (offset > 0) {
+      const countQueryBuilder = this.buildQueryBuilder(query, false);
+      countQueryBuilder.orderBy(); // Clear ordering for count - not needed for COUNT
 
-    return {
-      data: practices,
-      total,
-      limit,
-      offset,
-    };
+      const [practices, total] = await Promise.all([
+        queryBuilder.getMany(),
+        countQueryBuilder.getCount(),
+      ]);
+
+      return {
+        data: practices,
+        total,
+        limit,
+        offset,
+      };
+    } else {
+      const practices = await queryBuilder.getMany();
+      return {
+        data: practices,
+        total: practices.length, // Approximate count (exact for limit queries)
+        limit,
+        offset,
+      };
+    }
   }
 
   async getPracticeById(id: string): Promise<Practice> {
@@ -364,17 +375,14 @@ export class PracticeAggregateService implements IPracticeService {
         .leftJoinAndSelect('practice.validationRules', 'validationRules')
         .leftJoinAndSelect('practice.tags', 'tags');
     } else {
-      // When not loading relations, use INNER JOIN for better performance when we have filters
-      // Join lesson if we need to filter by slug, status, or search in lesson title
-      if (lessonSlug || publishedOnly !== false || q) {
-        // Use INNER JOIN instead of LEFT JOIN for better performance when we have conditions
+      const needsLessonJoin =
+        lessonSlug || publishedOnly !== false || (q && q.trim().length > 0);
+      if (needsLessonJoin) {
         queryBuilder.innerJoin('practice.lesson', 'lesson');
       }
-      // Join tags only if we need to filter by tag
-      if (tag) {
+      if (tag && tag.trim().length > 0) {
         queryBuilder.innerJoin('practice.tags', 'tags');
       }
-      // No distinct needed when not loading relations - improves performance significantly
     }
 
     // Apply filters

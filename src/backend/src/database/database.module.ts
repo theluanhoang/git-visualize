@@ -27,6 +27,9 @@ import { ConfigService } from '@nestjs/config';
             process.env.DB_IDLE_TIMEOUT || '30000',
             10,
           ),
+          application_name: 'git-visualize-engine',
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 10000,
         },
         // Keep snake_case naming if needed later via custom naming strategy
       }),

@@ -1,5 +1,12 @@
 import { CommonEntity } from '../../../shared/entities/common.entity';
-import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { Lesson } from '../../lessons/lesson.entity';
 import { PracticeInstruction } from './practice-instruction.entity';
 import { PracticeHint } from './practice-hint.entity';
@@ -9,6 +16,15 @@ import { PracticeTag } from './practice-tag.entity';
 import type { IRepositoryState } from '../../git-engine/git-engine.interface';
 
 @Entity('practice')
+@Index('IDX_practice_lessonId', ['lessonId'])
+@Index('IDX_practice_isActive', ['isActive'])
+@Index('IDX_practice_order', ['order'])
+@Index('IDX_practice_lessonId_isActive', ['lessonId', 'isActive'])
+@Index('IDX_practice_lessonId_isActive_order', [
+  'lessonId',
+  'isActive',
+  'order',
+])
 export class Practice extends CommonEntity {
   @Column()
   lessonId: string;

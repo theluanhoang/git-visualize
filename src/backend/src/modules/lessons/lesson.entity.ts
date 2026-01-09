@@ -1,9 +1,11 @@
 import { CommonEntity } from '../../shared/entities/common.entity';
-import { Column, Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { ELessonStatus } from './lesson.interface';
 import { User } from '../users/user.entity';
 
 @Entity('lesson')
+@Index('IDX_lesson_slug', ['slug'])
+@Index('IDX_lesson_slug_status', ['slug', 'status'])
 export class Lesson extends CommonEntity {
   @Column()
   content: string;
