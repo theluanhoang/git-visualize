@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function resetPaymentTable() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -34,14 +34,16 @@ async function resetPaymentTable() {
     `);
 
     if (!subscriptionTableExists[0]?.exists) {
-      console.log('⚠️  Subscription table does not exist. Please run migrations first.');
+      console.log(
+        '⚠️  Subscription table does not exist. Please run migrations first.',
+      );
       await dataSource.destroy();
       process.exit(1);
     }
 
     console.log('✅ Payment table reset successfully!');
     console.log('💡 Now run: yarn run migration:run');
-    
+
     await dataSource.destroy();
     process.exit(0);
   } catch (error) {
@@ -54,16 +56,3 @@ async function resetPaymentTable() {
 }
 
 void resetPaymentTable();
-
-
-
-
-
-
-
-
-
-
-
-
-

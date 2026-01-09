@@ -55,7 +55,9 @@ export class WsJwtGuard implements CanActivate {
         }
         client.data.userId = userId;
 
-        this.logger.debug(`Authenticated socket ${client.id} for user ${userId}`);
+        this.logger.debug(
+          `Authenticated socket ${client.id} for user ${userId}`,
+        );
         return true;
       } catch (error) {
         if (error instanceof WsException) {
@@ -75,4 +77,3 @@ export class WsJwtGuard implements CanActivate {
     }
   }
 }
-

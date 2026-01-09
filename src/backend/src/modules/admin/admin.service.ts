@@ -21,7 +21,12 @@ export class AdminService {
     userId: string,
     subject: string,
     message: string,
-    attachments: { originalname: string; buffer?: Buffer; mimetype?: string; path?: string }[] = []
+    attachments: {
+      originalname: string;
+      buffer?: Buffer;
+      mimetype?: string;
+      path?: string;
+    }[] = [],
   ): Promise<void> {
     const user = await this.userService.findById(userId);
     if (!user) {
@@ -30,7 +35,7 @@ export class AdminService {
 
     const mailAttachments: MailAttachment[] = (attachments || []).map((f) => ({
       filename: f.originalname,
-      content: (f.buffer || Buffer.from('')) as Buffer,
+      content: f.buffer || Buffer.from(''),
       contentType: f.mimetype,
     }));
 
@@ -44,8 +49,10 @@ export class AdminService {
   }
 
   async getDashboardStats() {
-    const { totalLessons, totalViews } = await this.lessonService.getLessonsAggregateStats();
-    const { totalUsers, recentActivity } = await this.userService.getUserAggregateStats();
+    const { totalLessons, totalViews } =
+      await this.lessonService.getLessonsAggregateStats();
+    const { totalUsers, recentActivity } =
+      await this.userService.getUserAggregateStats();
     return {
       totalLessons,
       totalUsers,
@@ -56,11 +63,11 @@ export class AdminService {
 
   async getAnalyticsMetrics() {
     const totalTimeSpent = await this.calculateTotalTimeSpent();
-    
+
     const completionRate = await this.calculateCompletionRate();
-    
+
     const averageSessionTime = await this.calculateAverageSessionTime();
-    
+
     const engagementRate = await this.calculateEngagementRate();
 
     return {
@@ -71,11 +78,19 @@ export class AdminService {
     };
   }
 
-  async getDeviceUsageBreakdown(): Promise<Array<{ device: 'Desktop' | 'Mobile' | 'Tablet' | 'Bot' | 'Unknown'; count: number }>> {
+  async getDeviceUsageBreakdown(): Promise<
+    Array<{
+      device: 'Desktop' | 'Mobile' | 'Tablet' | 'Bot' | 'Unknown';
+      count: number;
+    }>
+  > {
     try {
       const agg = await this.sessionService.getDeviceUsageAggregate();
 
-      const result: Array<{ device: 'Desktop' | 'Mobile' | 'Tablet' | 'Bot' | 'Unknown'; count: number }> = [
+      const result: Array<{
+        device: 'Desktop' | 'Mobile' | 'Tablet' | 'Bot' | 'Unknown';
+        count: number;
+      }> = [
         { device: 'Desktop', count: agg.desktop },
         { device: 'Mobile', count: agg.mobile },
         { device: 'Tablet', count: agg.tablet },
@@ -96,16 +111,24 @@ export class AdminService {
     }
   }
 
-  async getHourlyActivity(date?: string): Promise<Array<{ hour: string; users: number }>> {
+  async getHourlyActivity(
+    date?: string,
+  ): Promise<Array<{ hour: string; users: number }>> {
     try {
       return this.sessionService.getHourlyActivityAggregate(date);
     } catch (error) {
       console.error('Error calculating hourly activity:', error);
-      return Array.from({ length: 24 }, (_, i) => ({ hour: `${String(i).padStart(2, '0')}:00`, users: 0 }));
+      return Array.from({ length: 24 }, (_, i) => ({
+        hour: `${String(i).padStart(2, '0')}:00`,
+        users: 0,
+      }));
     }
   }
 
-  private async calculateTotalTimeSpent(): Promise<{ hours: number; minutes: number }> {
+  private async calculateTotalTimeSpent(): Promise<{
+    hours: number;
+    minutes: number;
+  }> {
     try {
       const stats = await this.practiceEntityService.getAggregateStats();
       const totalMinutes = stats.totalTimeSpent.totalMinutes;
@@ -137,7 +160,10 @@ export class AdminService {
     }
   }
 
-  private async calculateAverageSessionTime(): Promise<{ hours: number; minutes: number }> {
+  private async calculateAverageSessionTime(): Promise<{
+    hours: number;
+    minutes: number;
+  }> {
     try {
       const now = new Date();
       const sessions = await this.sessionService.getAllSessionsForAnalytics();
@@ -147,10 +173,10 @@ export class AdminService {
       let totalMinutes = 0;
       let validSessions = 0;
 
-      sessions.forEach(session => {
+      sessions.forEach((session) => {
         const startTime = session.createdAt;
         let endTime: Date;
-        
+
         if (session.revokedAt) {
           endTime = session.revokedAt;
         } else if (session.expiresAt && session.expiresAt > now) {
@@ -161,7 +187,10 @@ export class AdminService {
           endTime = now;
         }
 
-        const duration = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60)); 
+        const duration = Math.max(
+          0,
+          (endTime.getTime() - startTime.getTime()) / (1000 * 60),
+        );
         totalMinutes += duration;
         validSessions++;
       });
@@ -186,7 +215,8 @@ export class AdminService {
 
       if (userCount === 0) return 0;
 
-      const totalEngagedUsers = await this.lessonViewService.getUniqueEngagedUsersCount();
+      const totalEngagedUsers =
+        await this.lessonViewService.getUniqueEngagedUsersCount();
 
       const engagementRate = (totalEngagedUsers / userCount) * 100;
       return Math.round(engagementRate * 10) / 10;
@@ -196,5 +226,3 @@ export class AdminService {
     }
   }
 }
-
-

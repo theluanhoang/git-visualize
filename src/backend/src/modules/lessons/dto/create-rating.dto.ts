@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min, Max, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  Min,
+  Max,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateRatingDto {
   @ApiProperty({
@@ -25,4 +32,3 @@ export class CreateRatingDto {
 }
 
 export class UpdateRatingDto extends CreateRatingDto {}
-

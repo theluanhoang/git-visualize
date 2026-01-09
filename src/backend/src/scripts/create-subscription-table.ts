@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function createSubscriptionTable() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -34,7 +34,7 @@ async function createSubscriptionTable() {
         WHEN duplicate_object THEN null;
       END $$;
     `);
-    
+
     await dataSource.query(`
       DO $$ BEGIN
         CREATE TYPE "public"."subscription_status_enum" AS ENUM('ACTIVE', 'CANCELLED', 'EXPIRED', 'PENDING');
@@ -70,13 +70,21 @@ async function createSubscriptionTable() {
     `);
 
     // Create indexes
-    await dataSource.query(`CREATE INDEX "IDX_subscription_userId" ON "subscription" ("userId");`);
-    await dataSource.query(`CREATE INDEX "IDX_subscription_status" ON "subscription" ("status");`);
-    await dataSource.query(`CREATE INDEX "IDX_subscription_planType" ON "subscription" ("planType");`);
-    await dataSource.query(`CREATE INDEX "IDX_subscription_endDate" ON "subscription" ("endDate");`);
+    await dataSource.query(
+      `CREATE INDEX "IDX_subscription_userId" ON "subscription" ("userId");`,
+    );
+    await dataSource.query(
+      `CREATE INDEX "IDX_subscription_status" ON "subscription" ("status");`,
+    );
+    await dataSource.query(
+      `CREATE INDEX "IDX_subscription_planType" ON "subscription" ("planType");`,
+    );
+    await dataSource.query(
+      `CREATE INDEX "IDX_subscription_endDate" ON "subscription" ("endDate");`,
+    );
 
     console.log('✅ Subscription table created successfully!');
-    
+
     await dataSource.destroy();
     process.exit(0);
   } catch (error) {
@@ -89,16 +97,3 @@ async function createSubscriptionTable() {
 }
 
 void createSubscriptionTable();
-
-
-
-
-
-
-
-
-
-
-
-
-

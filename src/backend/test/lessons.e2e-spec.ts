@@ -8,7 +8,9 @@ describe('Lessons E2E', () => {
   let server: any;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleFixture.createNestApplication();
     await app.init();
     server = app.getHttpServer();
@@ -26,5 +28,3 @@ describe('Lessons E2E', () => {
     expect(res.body).toHaveProperty('total');
   });
 });
-
-

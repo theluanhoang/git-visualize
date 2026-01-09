@@ -34,12 +34,15 @@ export class ContentExtractionService {
   async extractFromUrl(url: string): Promise<ExtractedContent> {
     try {
       const urlObj = new URL(url);
-      const isAllowedDomain = this.ALLOWED_DOMAINS.some(domain =>
-        urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+      const isAllowedDomain = this.ALLOWED_DOMAINS.some(
+        (domain) =>
+          urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`),
       );
 
       if (!isAllowedDomain) {
-        throw new BadRequestException(`Domain ${urlObj.hostname} is not in the allowed list`);
+        throw new BadRequestException(
+          `Domain ${urlObj.hostname} is not in the allowed list`,
+        );
       }
 
       const response = await axios.get(url, {
@@ -51,12 +54,17 @@ export class ContentExtractionService {
       });
 
       const $ = cheerio.load(response.data);
-      $('script, style, nav, header, footer, aside, .advertisement, .ads, .sidebar').remove();
-      const title = $('h1').first().text().trim() ||
+      $(
+        'script, style, nav, header, footer, aside, .advertisement, .ads, .sidebar',
+      ).remove();
+      const title =
+        $('h1').first().text().trim() ||
         $('title').text().trim() ||
         'Untitled Document';
       let content = '';
-      const mainContent = $('main, article, .content, .post-content, .entry-content').first();
+      const mainContent = $(
+        'main, article, .content, .post-content, .entry-content',
+      ).first();
       if (mainContent.length > 0) {
         content = this.cleanHtml(mainContent.html() || '');
       } else {
@@ -76,7 +84,9 @@ export class ContentExtractionService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Failed to extract content from URL: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to extract content from URL: ${error.message}`,
+      );
     }
   }
 
@@ -93,9 +103,14 @@ export class ContentExtractionService {
       try {
         text = await extractFileText(buffer, 'pdf');
       } catch (err) {
-        throw new BadRequestException('Could not extract text from PDF. (Try another file?)');
+        throw new BadRequestException(
+          'Could not extract text from PDF. (Try another file?)',
+        );
       }
-      const content = this.normalizeText(this.cleanText(text)).slice(0, this.MAX_TEXT_LENGTH);
+      const content = this.normalizeText(this.cleanText(text)).slice(
+        0,
+        this.MAX_TEXT_LENGTH,
+      );
       const title = this.extractTitleFromText(content) || 'PDF Document';
       return {
         title,
@@ -108,7 +123,9 @@ export class ContentExtractionService {
         },
       };
     } catch (error) {
-      throw new BadRequestException(`Failed to extract content from PDF: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to extract content from PDF: ${error.message}`,
+      );
     }
   }
 
@@ -118,7 +135,12 @@ export class ContentExtractionService {
         throw new BadRequestException('DOCX file is too large');
       }
       const ft = await fileType.fromBuffer(buffer).catch(() => null);
-      if (!ft || (ft.ext !== 'docx' && ft.mime !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+      if (
+        !ft ||
+        (ft.ext !== 'docx' &&
+          ft.mime !==
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+      ) {
         throw new BadRequestException('Invalid DOCX file type');
       }
       let text: string = '';
@@ -132,10 +154,15 @@ export class ContentExtractionService {
         try {
           text = await extractFileText(buffer, 'docx');
         } catch (err) {
-          throw new BadRequestException('Could not extract text from DOCX. (Try another file?)');
+          throw new BadRequestException(
+            'Could not extract text from DOCX. (Try another file?)',
+          );
         }
       }
-      const content = this.normalizeText(this.cleanText(text)).slice(0, this.MAX_TEXT_LENGTH);
+      const content = this.normalizeText(this.cleanText(text)).slice(
+        0,
+        this.MAX_TEXT_LENGTH,
+      );
       const title = this.extractTitleFromText(content) || 'DOCX Document';
       return {
         title,
@@ -148,7 +175,9 @@ export class ContentExtractionService {
         },
       };
     } catch (error) {
-      throw new BadRequestException(`Failed to extract content from DOCX: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to extract content from DOCX: ${error.message}`,
+      );
     }
   }
 
@@ -166,7 +195,9 @@ export class ContentExtractionService {
         $el.find('code').addClass('language-text');
       }
     });
-    $('p').filter((_, el) => $(el).text().trim() === '').remove();
+    $('p')
+      .filter((_, el) => $(el).text().trim() === '')
+      .remove();
     return $.html();
   }
 
@@ -178,19 +209,20 @@ export class ContentExtractionService {
   }
 
   private normalizeText(text: string): string {
-    return text
-      .replace(/[\u200B-\u200D\uFEFF]/g, '')
-      .normalize('NFC');
+    return text.replace(/[\u200B-\u200D\uFEFF]/g, '').normalize('NFC');
   }
 
   private extractTitleFromText(text: string): string | null {
-    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    const lines = text.split('\n').filter((line) => line.trim().length > 0);
     if (lines.length === 0) return null;
     for (const line of lines.slice(0, 5)) {
       const trimmed = line.trim();
-      if (trimmed.length > 10 && trimmed.length < 100 &&
+      if (
+        trimmed.length > 10 &&
+        trimmed.length < 100 &&
         !trimmed.toLowerCase().includes('table of contents') &&
-        !trimmed.toLowerCase().includes('index')) {
+        !trimmed.toLowerCase().includes('index')
+      ) {
         return trimmed;
       }
     }
@@ -198,6 +230,6 @@ export class ContentExtractionService {
   }
 
   private countWords(text: string): number {
-    return text.split(/\s+/).filter(word => word.length > 0).length;
+    return text.split(/\s+/).filter((word) => word.length > 0).length;
   }
 }

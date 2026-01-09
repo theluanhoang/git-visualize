@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function fixSubscriptionTable() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -38,19 +38,28 @@ async function fixSubscriptionTable() {
     const subscriptionCount = await dataSource.query(`
       SELECT COUNT(*) as count FROM subscription;
     `);
-    const subscriptionRecordCount = parseInt(subscriptionCount[0]?.count || '0', 10);
+    const subscriptionRecordCount = parseInt(
+      subscriptionCount[0]?.count || '0',
+      10,
+    );
 
     if (!userIdColumnExists[0]?.exists && subscriptionRecordCount > 0) {
-      console.log(`⚠️  Subscription table exists with ${subscriptionRecordCount} records but userId column is missing`);
-      console.log('🗑️  Deleting all subscription records to allow migration to run...');
-      
+      console.log(
+        `⚠️  Subscription table exists with ${subscriptionRecordCount} records but userId column is missing`,
+      );
+      console.log(
+        '🗑️  Deleting all subscription records to allow migration to run...',
+      );
+
       await dataSource.query(`DELETE FROM subscription;`);
-      
+
       console.log(`✅ Deleted ${subscriptionRecordCount} subscription records`);
       await dataSource.destroy();
       process.exit(0);
     } else if (!userIdColumnExists[0]?.exists) {
-      console.log('ℹ️  userId column does not exist yet, and subscription table is empty');
+      console.log(
+        'ℹ️  userId column does not exist yet, and subscription table is empty',
+      );
       await dataSource.destroy();
       process.exit(0);
     }
@@ -65,14 +74,16 @@ async function fixSubscriptionTable() {
     const nullRecordCount = parseInt(nullCount[0]?.count || '0', 10);
 
     if (nullRecordCount > 0) {
-      console.log(`⚠️  Found ${nullRecordCount} subscription records with null userId`);
+      console.log(
+        `⚠️  Found ${nullRecordCount} subscription records with null userId`,
+      );
       console.log('🗑️  Deleting invalid subscription records...');
-      
+
       await dataSource.query(`
         DELETE FROM subscription 
         WHERE "userId" IS NULL;
       `);
-      
+
       console.log(`✅ Deleted ${nullRecordCount} invalid subscription records`);
     } else {
       console.log('✅ No invalid subscription records found');
@@ -91,16 +102,3 @@ async function fixSubscriptionTable() {
 }
 
 void fixSubscriptionTable();
-
-
-
-
-
-
-
-
-
-
-
-
-

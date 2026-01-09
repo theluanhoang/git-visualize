@@ -14,12 +14,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Quiz,
-      QuizQuestion,
-      QuizOption,
-      QuizTag,
-    ]),
+    TypeOrmModule.forFeature([Quiz, QuizQuestion, QuizOption, QuizTag]),
     SubscriptionModule,
   ],
   controllers: [QuizController],
@@ -30,9 +25,6 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     QuizOptionService,
     QuizTagService,
   ],
-  exports: [
-    QuizAggregateService,
-    QuizEntityService,
-  ],
+  exports: [QuizAggregateService, QuizEntityService],
 })
 export class QuizModule {}

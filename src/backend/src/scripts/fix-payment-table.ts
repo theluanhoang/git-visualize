@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function fixPaymentTable() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -41,16 +41,22 @@ async function fixPaymentTable() {
     const paymentRecordCount = parseInt(paymentCount[0]?.count || '0', 10);
 
     if (!subscriptionIdColumnExists[0]?.exists && paymentRecordCount > 0) {
-      console.log(`⚠️  Payment table exists with ${paymentRecordCount} records but subscriptionId column is missing`);
-      console.log('🗑️  Deleting all payment records to allow migration to run...');
-      
+      console.log(
+        `⚠️  Payment table exists with ${paymentRecordCount} records but subscriptionId column is missing`,
+      );
+      console.log(
+        '🗑️  Deleting all payment records to allow migration to run...',
+      );
+
       await dataSource.query(`DELETE FROM payment;`);
-      
+
       console.log(`✅ Deleted ${paymentRecordCount} payment records`);
       await dataSource.destroy();
       process.exit(0);
     } else if (!subscriptionIdColumnExists[0]?.exists) {
-      console.log('ℹ️  subscriptionId column does not exist yet, and payment table is empty');
+      console.log(
+        'ℹ️  subscriptionId column does not exist yet, and payment table is empty',
+      );
       await dataSource.destroy();
       process.exit(0);
     }
@@ -65,14 +71,16 @@ async function fixPaymentTable() {
     const nullRecordCount = parseInt(nullCount[0]?.count || '0', 10);
 
     if (nullRecordCount > 0) {
-      console.log(`⚠️  Found ${nullRecordCount} payment records with null subscriptionId`);
+      console.log(
+        `⚠️  Found ${nullRecordCount} payment records with null subscriptionId`,
+      );
       console.log('🗑️  Deleting invalid payment records...');
-      
+
       await dataSource.query(`
         DELETE FROM payment 
         WHERE "subscriptionId" IS NULL;
       `);
-      
+
       console.log(`✅ Deleted ${nullRecordCount} invalid payment records`);
     } else {
       console.log('✅ No invalid payment records found');
@@ -91,4 +99,3 @@ async function fixPaymentTable() {
 }
 
 void fixPaymentTable();
-

@@ -1,4 +1,10 @@
-import { IsEnum, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUrl,
+  ValidateIf,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum SourceType {
@@ -104,7 +110,8 @@ export class GenerateLessonResponseDto {
 
   @ApiProperty({
     description: 'Short description summarizing the lesson',
-    example: 'Learn how to create, switch, and merge branches in Git with practical commands and real-world workflows.',
+    example:
+      'Learn how to create, switch, and merge branches in Git with practical commands and real-world workflows.',
   })
   description: string;
 
@@ -142,8 +149,17 @@ export class GenerateLessonResponseDto {
     order?: number;
     instructions?: Array<{ content: string; order?: number }>;
     hints?: Array<{ content: string; order?: number }>;
-    expectedCommands?: Array<{ command: string; order?: number; isRequired?: boolean }>;
-    validationRules?: Array<{ type: string; value: string; message?: string; order?: number }>;
+    expectedCommands?: Array<{
+      command: string;
+      order?: number;
+      isRequired?: boolean;
+    }>;
+    validationRules?: Array<{
+      type: string;
+      value: string;
+      message?: string;
+      order?: number;
+    }>;
     tags?: Array<{ name: string; color?: string }>;
     goalRepositoryState?: any;
   }>;

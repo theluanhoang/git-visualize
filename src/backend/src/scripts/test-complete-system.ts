@@ -8,14 +8,16 @@ async function testCompleteSystem() {
   try {
     // Test 1: Get lesson with practices
     console.log('1️⃣ Testing lesson API with practices...');
-    const lessonResponse = await axios.get(`${API_BASE}/lesson?includePractices=true`);
+    const lessonResponse = await axios.get(
+      `${API_BASE}/lesson?includePractices=true`,
+    );
     const lesson = lessonResponse.data.data[0];
-    
+
     console.log(`✅ Lesson: ${lesson.title}`);
     console.log(`✅ Slug: ${lesson.slug}`);
     console.log(`✅ Status: ${lesson.status}`);
     console.log(`✅ Practices: ${lesson.practices?.length || 0}`);
-    
+
     if (lesson.practices && lesson.practices.length > 0) {
       const practice = lesson.practices[0];
       console.log(`✅ Practice: ${practice.title}`);
@@ -25,18 +27,24 @@ async function testCompleteSystem() {
 
     // Test 2: Get practices by lesson slug
     console.log('\n2️⃣ Testing practices API by lesson slug...');
-    const practicesResponse = await axios.get(`${API_BASE}/practices?lessonSlug=${lesson.slug}`);
+    const practicesResponse = await axios.get(
+      `${API_BASE}/practices?lessonSlug=${lesson.slug}`,
+    );
     const practices = practicesResponse.data.data;
-    
+
     console.log(`✅ Found ${practices.length} practices`);
-    
+
     if (practices.length > 0) {
       const practice = practices[0];
       console.log(`✅ Practice Title: ${practice.title}`);
       console.log(`✅ Instructions: ${practice.instructions?.length || 0}`);
       console.log(`✅ Hints: ${practice.hints?.length || 0}`);
-      console.log(`✅ Expected Commands: ${practice.expectedCommands?.length || 0}`);
-      console.log(`✅ Validation Rules: ${practice.validationRules?.length || 0}`);
+      console.log(
+        `✅ Expected Commands: ${practice.expectedCommands?.length || 0}`,
+      );
+      console.log(
+        `✅ Validation Rules: ${practice.validationRules?.length || 0}`,
+      );
       console.log(`✅ Tags: ${practice.tags?.length || 0}`);
     }
 
@@ -44,9 +52,11 @@ async function testCompleteSystem() {
     console.log('\n3️⃣ Testing individual practice details...');
     if (practices.length > 0) {
       const practiceId = practices[0].id;
-      const practiceDetailResponse = await axios.get(`${API_BASE}/practices?id=${practiceId}`);
+      const practiceDetailResponse = await axios.get(
+        `${API_BASE}/practices?id=${practiceId}`,
+      );
       const practiceDetail = practiceDetailResponse.data;
-      
+
       console.log(`✅ Practice ID: ${practiceDetail.id}`);
       console.log(`✅ Scenario: ${practiceDetail.scenario}`);
       console.log(`✅ Active: ${practiceDetail.isActive}`);
@@ -84,7 +94,9 @@ async function testCompleteSystem() {
       if (practice.expectedCommands) {
         console.log('⌨️ Expected Commands:');
         practice.expectedCommands.forEach((command: any, index: number) => {
-          console.log(`   ${index + 1}. ${command.command} ${command.isRequired ? '(Required)' : '(Optional)'}`);
+          console.log(
+            `   ${index + 1}. ${command.command} ${command.isRequired ? '(Required)' : '(Optional)'}`,
+          );
         });
       }
     }
@@ -96,7 +108,9 @@ async function testCompleteSystem() {
       if (practice.validationRules) {
         console.log('✅ Validation Rules:');
         practice.validationRules.forEach((rule: any, index: number) => {
-          console.log(`   ${index + 1}. ${rule.type}: ${rule.value} - ${rule.message}`);
+          console.log(
+            `   ${index + 1}. ${rule.type}: ${rule.value} - ${rule.message}`,
+          );
         });
       }
     }
@@ -117,11 +131,11 @@ async function testCompleteSystem() {
     console.log('\n9️⃣ Testing analytics endpoints...');
     if (practices.length > 0) {
       const practiceId = practices[0].id;
-      
+
       // Test increment views
       await axios.post(`${API_BASE}/practices/${practiceId}/view`);
       console.log('✅ Incremented practice views');
-      
+
       // Test increment completions
       await axios.post(`${API_BASE}/practices/${practiceId}/complete`);
       console.log('✅ Incremented practice completions');
@@ -137,7 +151,6 @@ async function testCompleteSystem() {
     console.log(`- Validations: ${practices[0]?.validationRules?.length || 0}`);
     console.log(`- Tags: ${practices[0]?.tags?.length || 0}`);
     console.log('\n🚀 Ready for frontend testing!');
-
   } catch (error: any) {
     console.error('💥 Test failed:', error.message);
     if (error.response) {

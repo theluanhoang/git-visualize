@@ -1,4 +1,10 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex, TableUnique, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableIndex,
+  TableUnique,
+} from 'typeorm';
 
 export class CreateLessonViewTable1700000000004 implements MigrationInterface {
   name = 'CreateLessonViewTable1700000000004';
@@ -113,12 +119,14 @@ export class CreateLessonViewTable1700000000004 implements MigrationInterface {
     await queryRunner.dropIndex('lesson_view', 'IDX_lesson_view_viewed_at');
     await queryRunner.dropIndex('lesson_view', 'IDX_lesson_view_lesson_id');
     await queryRunner.dropIndex('lesson_view', 'IDX_lesson_view_user_id');
-    
+
     // Drop unique constraint
-    await queryRunner.dropUniqueConstraint('lesson_view', 'UQ_lesson_view_user_lesson');
-    
+    await queryRunner.dropUniqueConstraint(
+      'lesson_view',
+      'UQ_lesson_view_user_lesson',
+    );
+
     // Drop table
     await queryRunner.dropTable('lesson_view');
   }
 }
-

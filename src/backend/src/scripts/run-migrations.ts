@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function runMigrations() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -11,7 +11,7 @@ async function runMigrations() {
 
     console.log('📦 Running migrations...');
     const migrations = await dataSource.runMigrations();
-    
+
     if (migrations.length === 0) {
       console.log('ℹ️  No pending migrations');
     } else {
@@ -34,16 +34,3 @@ async function runMigrations() {
 }
 
 void runMigrations();
-
-
-
-
-
-
-
-
-
-
-
-
-

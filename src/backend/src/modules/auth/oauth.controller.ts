@@ -1,5 +1,21 @@
-import { Controller, Get, Post, Req, Res, UseGuards, Body, Param, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+  Body,
+  Param,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
@@ -15,7 +31,6 @@ export class OAuthController {
     private configService: ConfigService,
   ) {}
 
-
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
@@ -28,14 +43,25 @@ export class OAuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Handle Google OAuth callback' })
-  @ApiResponse({ status: 200, description: 'OAuth login successful', type: OAuthLoginResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OAuth login successful',
+    type: OAuthLoginResponseDto,
+  })
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const userInfo = req.user as any;
     const userAgent = req.get('User-Agent');
     const ip = req.ip || req.connection.remoteAddress;
-    const result = await this.oauthService.validateOAuthUser(userInfo, userAgent, ip);
-    
-    const redirectUrl = await this.oauthService.buildOAuthRedirectUrl(result, userInfo.locale || 'en');
+    const result = await this.oauthService.validateOAuthUser(
+      userInfo,
+      userAgent,
+      ip,
+    );
+
+    const redirectUrl = await this.oauthService.buildOAuthRedirectUrl(
+      result,
+      userInfo.locale || 'en',
+    );
     res.redirect(redirectUrl);
   }
 
@@ -51,14 +77,25 @@ export class OAuthController {
   @Get('github/callback')
   @UseGuards(AuthGuard('github'))
   @ApiOperation({ summary: 'Handle GitHub OAuth callback' })
-  @ApiResponse({ status: 200, description: 'OAuth login successful', type: OAuthLoginResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OAuth login successful',
+    type: OAuthLoginResponseDto,
+  })
   async githubAuthCallback(@Req() req: Request, @Res() res: Response) {
     const userInfo = req.user as any;
     const userAgent = req.get('User-Agent');
     const ip = req.ip || req.connection.remoteAddress;
-    const result = await this.oauthService.validateOAuthUser(userInfo, userAgent, ip);
-    
-    const redirectUrl = await this.oauthService.buildOAuthRedirectUrl(result, userInfo.locale || 'en');
+    const result = await this.oauthService.validateOAuthUser(
+      userInfo,
+      userAgent,
+      ip,
+    );
+
+    const redirectUrl = await this.oauthService.buildOAuthRedirectUrl(
+      result,
+      userInfo.locale || 'en',
+    );
     res.redirect(redirectUrl);
   }
 
@@ -74,14 +111,25 @@ export class OAuthController {
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
   @ApiOperation({ summary: 'Handle Facebook OAuth callback' })
-  @ApiResponse({ status: 200, description: 'OAuth login successful', type: OAuthLoginResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OAuth login successful',
+    type: OAuthLoginResponseDto,
+  })
   async facebookAuthCallback(@Req() req: Request, @Res() res: Response) {
     const userInfo = req.user as any;
     const userAgent = req.get('User-Agent');
     const ip = req.ip || req.connection.remoteAddress;
-    const result = await this.oauthService.validateOAuthUser(userInfo, userAgent, ip);
-    
-    const redirectUrl = await this.oauthService.buildOAuthRedirectUrl(result, userInfo.locale || 'en');
+    const result = await this.oauthService.validateOAuthUser(
+      userInfo,
+      userAgent,
+      ip,
+    );
+
+    const redirectUrl = await this.oauthService.buildOAuthRedirectUrl(
+      result,
+      userInfo.locale || 'en',
+    );
     res.redirect(redirectUrl);
   }
 
@@ -89,13 +137,19 @@ export class OAuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Unlink OAuth provider from user account' })
-  @ApiResponse({ status: 200, description: 'OAuth provider unlinked successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'OAuth provider unlinked successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async unlinkProvider(
     @Req() req: Request,
     @Param('provider') provider: string,
   ) {
     const userId = req.user?.['sub'];
-    return this.oauthService.unlinkOAuthProviderWithValidation(userId, provider);
+    return this.oauthService.unlinkOAuthProviderWithValidation(
+      userId,
+      provider,
+    );
   }
 }

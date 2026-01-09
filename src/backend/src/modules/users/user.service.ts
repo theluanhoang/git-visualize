@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { User } from './user.entity';
@@ -31,7 +36,10 @@ export class UserService {
     return user;
   }
 
-  async updateCurrentUserProfile(userId: string, updateData: UpdateProfileDto): Promise<UserResponseDto> {
+  async updateCurrentUserProfile(
+    userId: string,
+    updateData: UpdateProfileDto,
+  ): Promise<UserResponseDto> {
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
@@ -52,12 +60,18 @@ export class UserService {
     return this.getUserStats(userId);
   }
 
-  async getUserByIdWithPermission(targetUserId: string, currentUser: AuthenticatedUserDto): Promise<UserResponseDto> {
+  async getUserByIdWithPermission(
+    targetUserId: string,
+    currentUser: AuthenticatedUserDto,
+  ): Promise<UserResponseDto> {
     if (!currentUser) {
       throw new UnauthorizedException('User not authenticated');
     }
 
-    if (currentUser.sub !== targetUserId && currentUser.role !== EUserRole.ADMIN) {
+    if (
+      currentUser.sub !== targetUserId &&
+      currentUser.role !== EUserRole.ADMIN
+    ) {
       throw new ForbiddenException('Cannot view other user profiles');
     }
 
@@ -69,7 +83,9 @@ export class UserService {
     return user;
   }
 
-  async getAllUsersWithPermission(currentUser: AuthenticatedUserDto): Promise<UserResponseDto[]> {
+  async getAllUsersWithPermission(
+    currentUser: AuthenticatedUserDto,
+  ): Promise<UserResponseDto[]> {
     if (!currentUser) {
       throw new UnauthorizedException('User not authenticated');
     }
@@ -130,11 +146,14 @@ export class UserService {
     });
   }
 
-  async updateProfile(id: string, profileData: {
-    firstName?: string;
-    lastName?: string;
-    avatar?: string;
-  }): Promise<User | null> {
+  async updateProfile(
+    id: string,
+    profileData: {
+      firstName?: string;
+      lastName?: string;
+      avatar?: string;
+    },
+  ): Promise<User | null> {
     await this.userRepository.update(id, profileData);
     return this.getProfile(id);
   }
@@ -145,7 +164,8 @@ export class UserService {
     oauthSessions: number;
     lastLoginAt: Date | null;
   }> {
-    const { total, active, oauth } = await this.sessionService.getSessionStats(id);
+    const { total, active, oauth } =
+      await this.sessionService.getSessionStats(id);
     const lastLoginAt = await this.sessionService.getLastLoginAt(id);
 
     return {
@@ -156,7 +176,10 @@ export class UserService {
     };
   }
 
-  async updateUserStatus(id: string, isActive: boolean): Promise<UserResponseDto> {
+  async updateUserStatus(
+    id: string,
+    isActive: boolean,
+  ): Promise<UserResponseDto> {
     const user = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -164,11 +187,11 @@ export class UserService {
 
     await this.userRepository.update(id, { isActive });
     const updatedUser = await this.getProfile(id);
-    
+
     if (!updatedUser) {
       throw new NotFoundException('User not found after update');
     }
-    
+
     return {
       id: updatedUser.id,
       email: updatedUser.email,
@@ -191,56 +214,78 @@ export class UserService {
     await this.userRepository.delete(id);
   }
 
-  async getUserAggregateStats(): Promise<{ totalUsers: number; recentActivity: number }>{
+  async getUserAggregateStats(): Promise<{
+    totalUsers: number;
+    recentActivity: number;
+  }> {
     const users = await this.userRepository.find();
     const totalUsers = users.length;
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const recentActivity = users.filter(u => new Date(u.createdAt) >= sevenDaysAgo).length;
+    const recentActivity = users.filter(
+      (u) => new Date(u.createdAt) >= sevenDaysAgo,
+    ).length;
     return { totalUsers, recentActivity };
   }
 
   async getUsers(query: GetUsersQueryDto): Promise<UsersResponseDto> {
     try {
-      const { page = 1, limit = 10, search, role, status, sortBy = 'createdAt', sortOrder = 'DESC' } = query;
-      
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        role,
+        status,
+        sortBy = 'createdAt',
+        sortOrder = 'DESC',
+      } = query;
+
       const queryBuilder = this.createUsersQueryBuilder(search, role, status);
-      
+
       const total = await queryBuilder.getCount();
-      
+
       const users = await queryBuilder
         .orderBy(`user.${sortBy}`, sortOrder)
         .skip((page - 1) * limit)
         .take(limit)
         .getMany();
-      
+
       const totalPages = Math.ceil(total / limit);
-      
-      const userDtos = await Promise.all(users.map(async (user) => {
-        const { total, active, oauth } = await this.sessionService.getSessionStats(user.id);
-        const lastLoginAt = await this.sessionService.getLastLoginAt(user.id);
-        return {
-          id: user.id,
-          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
-          email: user.email,
-          role: user.role,
-          status: user.isActive ? 'active' : 'inactive',
-          joinedAt: user.createdAt.toISOString(),
-          lessonsCompleted: 0,
-          totalSessions: total,
-          activeSessions: active,
-          oauthSessions: oauth,
-          lastLoginAt,
-          lastActive: lastLoginAt ? (typeof lastLoginAt === 'string' ? lastLoginAt : lastLoginAt.toISOString()) : null,
-        } as any;
-      }));
-      
+
+      const userDtos = await Promise.all(
+        users.map(async (user) => {
+          const { total, active, oauth } =
+            await this.sessionService.getSessionStats(user.id);
+          const lastLoginAt = await this.sessionService.getLastLoginAt(user.id);
+          return {
+            id: user.id,
+            name:
+              [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+              user.email,
+            email: user.email,
+            role: user.role,
+            status: user.isActive ? 'active' : 'inactive',
+            joinedAt: user.createdAt.toISOString(),
+            lessonsCompleted: 0,
+            totalSessions: total,
+            activeSessions: active,
+            oauthSessions: oauth,
+            lastLoginAt,
+            lastActive: lastLoginAt
+              ? typeof lastLoginAt === 'string'
+                ? lastLoginAt
+                : lastLoginAt.toISOString()
+              : null,
+          } as any;
+        }),
+      );
+
       return {
         users: userDtos,
         total,
         page,
         limit,
-        totalPages
+        totalPages,
       };
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -249,30 +294,34 @@ export class UserService {
         total: 0,
         page: 1,
         limit: 10,
-        totalPages: 0
+        totalPages: 0,
       };
     }
   }
 
-  private createUsersQueryBuilder(search?: string, role?: string, status?: string): SelectQueryBuilder<User> {
+  private createUsersQueryBuilder(
+    search?: string,
+    role?: string,
+    status?: string,
+  ): SelectQueryBuilder<User> {
     const queryBuilder = this.userRepository.createQueryBuilder('user');
-    
+
     if (search) {
       queryBuilder.andWhere(
         '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
-    
+
     if (role) {
       queryBuilder.andWhere('user.role = :role', { role });
     }
-    
+
     if (status) {
       const isActive = status === 'active';
       queryBuilder.andWhere('user.isActive = :isActive', { isActive });
     }
-    
+
     return queryBuilder;
   }
 }

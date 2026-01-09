@@ -6,7 +6,9 @@ interface Paths {
   migrations?: string[];
 }
 
-export const createDataSourceOptions = (paths: Paths = {}): DataSourceOptions => {
+export const createDataSourceOptions = (
+  paths: Paths = {},
+): DataSourceOptions => {
   const config = configuration();
 
   return {
@@ -21,4 +23,3 @@ export const createDataSourceOptions = (paths: Paths = {}): DataSourceOptions =>
     migrations: paths.migrations ?? ['dist/migrations/*.js'],
   };
 };
-

@@ -13,18 +13,24 @@ describe('AdminController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminController],
       providers: [
-        { provide: AdminService, useValue: {
-          sendEmailToUser: jest.fn(),
-          getDashboardStats: jest.fn(),
-          getAnalyticsMetrics: jest.fn(),
-          getDeviceUsageBreakdown: jest.fn(),
-          getHourlyActivity: jest.fn(),
-        } },
-        { provide: UserService, useValue: {
-          getUsers: jest.fn(),
-          updateUserStatus: jest.fn(),
-          deleteUser: jest.fn(),
-        } },
+        {
+          provide: AdminService,
+          useValue: {
+            sendEmailToUser: jest.fn(),
+            getDashboardStats: jest.fn(),
+            getAnalyticsMetrics: jest.fn(),
+            getDeviceUsageBreakdown: jest.fn(),
+            getHourlyActivity: jest.fn(),
+          },
+        },
+        {
+          provide: UserService,
+          useValue: {
+            getUsers: jest.fn(),
+            updateUserStatus: jest.fn(),
+            deleteUser: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -42,12 +48,31 @@ describe('AdminController', () => {
 
   it('getAllUsers passes through complex filters and sorts', async () => {
     userService.getUsers.mockResolvedValue({ items: [], total: 0 } as any);
-    await controller.getAllUsers({ page: 2, limit: 50, search: 'john', role: 'admin', status: 'active', sortBy: 'email', sortOrder: 'DESC' } as any);
-    expect(userService.getUsers).toHaveBeenCalledWith({ page: 2, limit: 50, search: 'john', role: 'admin', status: 'active', sortBy: 'email', sortOrder: 'DESC' });
+    await controller.getAllUsers({
+      page: 2,
+      limit: 50,
+      search: 'john',
+      role: 'admin',
+      status: 'active',
+      sortBy: 'email',
+      sortOrder: 'DESC',
+    } as any);
+    expect(userService.getUsers).toHaveBeenCalledWith({
+      page: 2,
+      limit: 50,
+      search: 'john',
+      role: 'admin',
+      status: 'active',
+      sortBy: 'email',
+      sortOrder: 'DESC',
+    });
   });
 
   it('updateUserStatus should call userService.updateUserStatus', async () => {
-    userService.updateUserStatus.mockResolvedValue({ id: 'u1', isActive: true } as any);
+    userService.updateUserStatus.mockResolvedValue({
+      id: 'u1',
+      isActive: true,
+    } as any);
     const res = await controller.updateUserStatus('u1', { isActive: true });
     expect(res).toEqual({ id: 'u1', isActive: true });
   });
@@ -61,14 +86,24 @@ describe('AdminController', () => {
 
   it('sendEmailToUser returns message', async () => {
     adminService.sendEmailToUser.mockResolvedValue(undefined);
-    const res = await controller.sendEmailToUser('u1', { subject: 's', message: 'm' } as any, []);
+    const res = await controller.sendEmailToUser(
+      'u1',
+      { subject: 's', message: 'm' } as any,
+      [],
+    );
     expect(res).toEqual({ message: 'Email sent' });
     expect(adminService.sendEmailToUser).toHaveBeenCalled();
   });
 
   it('sendEmailToUser propagates service error', async () => {
     adminService.sendEmailToUser.mockRejectedValue(new Error('smtp error'));
-    await expect(controller.sendEmailToUser('u1', { subject: 's', message: 'm' } as any, [])).rejects.toThrow('smtp error');
+    await expect(
+      controller.sendEmailToUser(
+        'u1',
+        { subject: 's', message: 'm' } as any,
+        [],
+      ),
+    ).rejects.toThrow('smtp error');
   });
 
   it('getDashboardStats should forward', async () => {
@@ -103,7 +138,9 @@ describe('AdminController', () => {
 
   it('updateUserStatus propagates service error', async () => {
     userService.updateUserStatus.mockRejectedValue(new Error('user not found'));
-    await expect(controller.updateUserStatus('u1', { isActive: false })).rejects.toThrow('user not found');
+    await expect(
+      controller.updateUserStatus('u1', { isActive: false }),
+    ).rejects.toThrow('user not found');
   });
 
   it('deleteUser propagates service error', async () => {
@@ -111,8 +148,3 @@ describe('AdminController', () => {
     await expect(controller.deleteUser('u1')).rejects.toThrow('cannot delete');
   });
 });
-
-
-
-
-

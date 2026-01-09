@@ -16,7 +16,7 @@ export class Rating extends CommonEntity {
   lessonId: string;
 
   @Column({ type: 'int' })
-  rating: number; 
+  rating: number;
 
   @Column({ type: 'text', nullable: true })
   comment?: string;
@@ -29,4 +29,3 @@ export class Rating extends CommonEntity {
   @JoinColumn({ name: 'lesson_id' })
   lesson: Lesson;
 }
-

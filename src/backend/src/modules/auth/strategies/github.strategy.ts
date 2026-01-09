@@ -7,12 +7,15 @@ import { OAuthProviderType } from 'src/modules/users/oauth.interface';
 import { OAuthProfile } from '../../../shared/types/auth.types';
 
 @Injectable()
-export class GitHubOAuthStrategy extends PassportStrategy(GitHubPassportStrategy, 'github') {
+export class GitHubOAuthStrategy extends PassportStrategy(
+  GitHubPassportStrategy,
+  'github',
+) {
   constructor(private configService: ConfigService) {
     const clientId = configService.get<string>('oauth.github.clientId');
     const clientSecret = configService.get<string>('oauth.github.clientSecret');
     const callbackURL = configService.get<string>('oauth.github.callbackUrl');
-    
+
     if (!clientId || !clientSecret || !callbackURL) {
       super({
         clientID: 'dummy',
@@ -22,7 +25,7 @@ export class GitHubOAuthStrategy extends PassportStrategy(GitHubPassportStrategy
       });
       return;
     }
-    
+
     super({
       clientID: clientId,
       clientSecret: clientSecret,
@@ -40,9 +43,9 @@ export class GitHubOAuthStrategy extends PassportStrategy(GitHubPassportStrategy
     done: (error: any, user?: any) => void,
   ): Promise<void> {
     const { username, emails, photos, displayName } = profile;
-    
+
     const userInfo: OAuthUserInfoDto = {
-      email: emails?.[0]?.value, 
+      email: emails?.[0]?.value,
       name: displayName || username || profile.id,
       avatar: photos?.[0]?.value,
       providerId: profile.id,

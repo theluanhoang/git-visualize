@@ -13,9 +13,12 @@ export class AdminInitService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly configService: ConfigService,
   ) {
-    const nodeEnv = this.configService.get<string>('app.nodeEnv', 'development');
+    const nodeEnv = this.configService.get<string>(
+      'app.nodeEnv',
+      'development',
+    );
     const isProduction = nodeEnv === 'production';
-    
+
     if (isProduction) {
       this.argon2Options = {
         type: argon2.argon2id,
@@ -27,8 +30,8 @@ export class AdminInitService implements OnModuleInit {
       this.argon2Options = {
         type: argon2.argon2id,
         memoryCost: 16384,
-        timeCost: 2, 
-        parallelism: 2, 
+        timeCost: 2,
+        parallelism: 2,
       };
     }
   }
@@ -49,7 +52,7 @@ export class AdminInitService implements OnModuleInit {
       );
 
       const existingAdmin = await this.userService.findByEmail(adminEmail);
-      
+
       if (existingAdmin) {
         if (existingAdmin.role === EUserRole.ADMIN) {
           this.logger.log(`Admin user already exists: ${adminEmail}`);
@@ -83,4 +86,3 @@ export class AdminInitService implements OnModuleInit {
     }
   }
 }
-

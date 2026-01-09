@@ -12,12 +12,17 @@ describe('Practice E2E', () => {
   const password = 'P@ssw0rd!';
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleFixture.createNestApplication();
     await app.init();
     server = app.getHttpServer();
 
-    await request(server).post('/auth/register').send({ email, password }).expect(201);
+    await request(server)
+      .post('/auth/register')
+      .send({ email, password })
+      .expect(201);
     const loginRes = await request(server)
       .post('/auth/login')
       .set('user-agent', 'jest')
@@ -47,16 +52,17 @@ describe('Practice E2E', () => {
       .put(`/practices/${practiceId}/repository-state`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ ...state, version: 1 })
-      .expect(201).catch(async (e) => {
+      .expect(201)
+      .catch(async (e) => {
         // Some controllers may return 200; accept both
         const retry = await request(server)
           .put(`/practices/${practiceId}/repository-state`)
           .set('Authorization', `Bearer ${accessToken}`)
           .send({ ...state, version: 1 });
-        expect([200,201]).toContain(retry.status);
+        expect([200, 201]).toContain(retry.status);
         return retry;
       });
-    expect([200,201]).toContain(upsert.status);
+    expect([200, 201]).toContain(upsert.status);
 
     const get = await request(server)
       .get(`/practices/${practiceId}/repository-state`)
@@ -70,5 +76,3 @@ describe('Practice E2E', () => {
       .expect(204);
   });
 });
-
-

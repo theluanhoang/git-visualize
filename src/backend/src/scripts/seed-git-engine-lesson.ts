@@ -11,7 +11,10 @@ import { Practice } from '../modules/practice/entities/practice.entity';
 import { PracticeInstruction } from '../modules/practice/entities/practice-instruction.entity';
 import { PracticeHint } from '../modules/practice/entities/practice-hint.entity';
 import { PracticeExpectedCommand } from '../modules/practice/entities/practice-expected-command.entity';
-import { PracticeValidationRule, ValidationRuleType } from '../modules/practice/entities/practice-validation-rule.entity';
+import {
+  PracticeValidationRule,
+  ValidationRuleType,
+} from '../modules/practice/entities/practice-validation-rule.entity';
 import { PracticeTag } from '../modules/practice/entities/practice-tag.entity';
 
 async function seedGitEngineLesson() {
@@ -32,10 +35,13 @@ async function seedGitEngineLesson() {
     entities: [
       require('../modules/lessons/lesson.entity').Lesson,
       require('../modules/practice/entities/practice.entity').Practice,
-      require('../modules/practice/entities/practice-instruction.entity').PracticeInstruction,
+      require('../modules/practice/entities/practice-instruction.entity')
+        .PracticeInstruction,
       require('../modules/practice/entities/practice-hint.entity').PracticeHint,
-      require('../modules/practice/entities/practice-expected-command.entity').PracticeExpectedCommand,
-      require('../modules/practice/entities/practice-validation-rule.entity').PracticeValidationRule,
+      require('../modules/practice/entities/practice-expected-command.entity')
+        .PracticeExpectedCommand,
+      require('../modules/practice/entities/practice-validation-rule.entity')
+        .PracticeValidationRule,
       require('../modules/practice/entities/practice-tag.entity').PracticeTag,
     ],
     synchronize: true,
@@ -62,7 +68,8 @@ async function seedGitEngineLesson() {
     const lesson = dataSource.getRepository(Lesson).create({
       title: 'Git Engine Commands: Complete Guide',
       slug: 'git-engine-commands-complete-guide',
-      description: 'Master all Git commands supported by our Git Engine. Learn repository management, branching, and version control using the interactive Git Engine.',
+      description:
+        'Master all Git commands supported by our Git Engine. Learn repository management, branching, and version control using the interactive Git Engine.',
       content: `# Git Engine Commands: Complete Guide
 
 ## Introduction to Git Engine
@@ -282,14 +289,17 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
     });
 
     const savedLesson = await dataSource.getRepository(Lesson).save(lesson);
-    console.log(`✅ Lesson created: ${savedLesson.title} (ID: ${savedLesson.id})`);
+    console.log(
+      `✅ Lesson created: ${savedLesson.title} (ID: ${savedLesson.id})`,
+    );
 
     // Create comprehensive practice
     console.log('🏋️ Creating comprehensive practice...');
     const practice = dataSource.getRepository(Practice).create({
       lessonId: savedLesson.id,
       title: 'Git Engine: Complete Workflow Practice',
-      scenario: 'You are learning Git using our interactive Git Engine. Practice the complete workflow from repository initialization to branch management. Use all supported commands to understand how Git works.',
+      scenario:
+        'You are learning Git using our interactive Git Engine. Practice the complete workflow from repository initialization to branch management. Use all supported commands to understand how Git works.',
       difficulty: 2,
       estimatedTime: 25,
       isActive: true,
@@ -299,84 +309,88 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
       goalRepositoryState: {
         commits: [
           {
-            id: "abc1234",
-            type: "COMMIT",
-            message: "Initial commit",
+            id: 'abc1234',
+            type: 'COMMIT',
+            message: 'Initial commit',
             author: {
-              name: "You",
-              email: "<you@example.com>",
-              date: new Date().toISOString()
+              name: 'You',
+              email: '<you@example.com>',
+              date: new Date().toISOString(),
             },
             committer: {
-              name: "You", 
-              email: "<you@example.com>",
-              date: new Date().toISOString()
+              name: 'You',
+              email: '<you@example.com>',
+              date: new Date().toISOString(),
             },
             parents: [],
-            branch: "main"
+            branch: 'main',
           },
           {
-            id: "def5678",
-            type: "COMMIT", 
-            message: "Add login feature",
+            id: 'def5678',
+            type: 'COMMIT',
+            message: 'Add login feature',
             author: {
-              name: "You",
-              email: "<you@example.com>",
-              date: new Date().toISOString()
+              name: 'You',
+              email: '<you@example.com>',
+              date: new Date().toISOString(),
             },
             committer: {
-              name: "You",
-              email: "<you@example.com>",
-              date: new Date().toISOString()
+              name: 'You',
+              email: '<you@example.com>',
+              date: new Date().toISOString(),
             },
-            parents: ["abc1234"],
-            branch: "feature/login"
+            parents: ['abc1234'],
+            branch: 'feature/login',
           },
           {
-            id: "ghi9012",
-            type: "COMMIT",
-            message: "Add dashboard feature", 
+            id: 'ghi9012',
+            type: 'COMMIT',
+            message: 'Add dashboard feature',
             author: {
-              name: "You",
-              email: "<you@example.com>",
-              date: new Date().toISOString()
+              name: 'You',
+              email: '<you@example.com>',
+              date: new Date().toISOString(),
             },
             committer: {
-              name: "You",
-              email: "<you@example.com>",
-              date: new Date().toISOString()
+              name: 'You',
+              email: '<you@example.com>',
+              date: new Date().toISOString(),
             },
-            parents: ["abc1234"],
-            branch: "feature/dashboard"
-          }
+            parents: ['abc1234'],
+            branch: 'feature/dashboard',
+          },
         ],
         branches: [
           {
-            name: "main",
-            commitId: "abc1234"
+            name: 'main',
+            commitId: 'abc1234',
           },
           {
-            name: "feature/login", 
-            commitId: "def5678"
+            name: 'feature/login',
+            commitId: 'def5678',
           },
           {
-            name: "feature/dashboard",
-            commitId: "ghi9012"
-          }
+            name: 'feature/dashboard',
+            commitId: 'ghi9012',
+          },
         ],
         tags: [],
         head: {
-          type: "branch",
-          ref: "main",
-          commitId: "abc1234"
+          type: 'branch',
+          ref: 'main',
+          commitId: 'abc1234',
         },
       },
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    const savedPractice = await dataSource.getRepository(Practice).save(practice);
-    console.log(`✅ Practice created: ${savedPractice.title} (ID: ${savedPractice.id})`);
+    const savedPractice = await dataSource
+      .getRepository(Practice)
+      .save(practice);
+    console.log(
+      `✅ Practice created: ${savedPractice.title} (ID: ${savedPractice.id})`,
+    );
 
     // Create detailed instructions
     console.log('📋 Creating step-by-step instructions...');
@@ -478,7 +492,7 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
         order: 14,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     await dataSource.getRepository(PracticeInstruction).save(instructions);
@@ -538,7 +552,8 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
       },
       {
         practiceId: savedPractice.id,
-        content: 'Use git switch -c <branch> to create and switch to new branch',
+        content:
+          'Use git switch -c <branch> to create and switch to new branch',
         order: 8,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -570,7 +585,7 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
         order: 12,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     await dataSource.getRepository(PracticeHint).save(hints);
@@ -690,10 +705,12 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
         isRequired: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
-    await dataSource.getRepository(PracticeExpectedCommand).save(expectedCommands);
+    await dataSource
+      .getRepository(PracticeExpectedCommand)
+      .save(expectedCommands);
     console.log(`✅ Created ${expectedCommands.length} expected commands`);
 
     // Create validation rules
@@ -703,7 +720,8 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
         practiceId: savedPractice.id,
         type: ValidationRuleType.MIN_COMMANDS,
         value: '12',
-        message: 'You need to execute at least 12 commands to complete this practice',
+        message:
+          'You need to execute at least 12 commands to complete this practice',
         order: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -711,8 +729,10 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
       {
         practiceId: savedPractice.id,
         type: ValidationRuleType.REQUIRED_COMMANDS,
-        value: 'git init,git status,git commit,git branch,git checkout,git switch,git clear',
-        message: 'You must use all supported Git Engine commands: init, status, commit, branch, checkout, switch, clear',
+        value:
+          'git init,git status,git commit,git branch,git checkout,git switch,git clear',
+        message:
+          'You must use all supported Git Engine commands: init, status, commit, branch, checkout, switch, clear',
         order: 2,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -734,10 +754,12 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
         order: 4,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
-    await dataSource.getRepository(PracticeValidationRule).save(validationRules);
+    await dataSource
+      .getRepository(PracticeValidationRule)
+      .save(validationRules);
     console.log(`✅ Created ${validationRules.length} validation rules`);
 
     // Create tags
@@ -784,7 +806,7 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
         color: '#607D8B',
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     await dataSource.getRepository(PracticeTag).save(tags);
@@ -799,7 +821,9 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
     console.log(`- Expected Commands: ${expectedCommands.length}`);
     console.log(`- Validation Rules: ${validationRules.length}`);
     console.log(`- Tags: ${tags.length}`);
-    console.log('\n🚀 The lesson is now ready for students to learn Git Engine commands!');
+    console.log(
+      '\n🚀 The lesson is now ready for students to learn Git Engine commands!',
+    );
     console.log('\n📋 Supported Commands Covered:');
     console.log('   ✅ git init - Initialize repository');
     console.log('   ✅ git status - Check repository state');
@@ -808,7 +832,6 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
     console.log('   ✅ git checkout - Switch branches');
     console.log('   ✅ git switch - Alternative branch switching');
     console.log('   ✅ git clear - Reset repository state');
-
   } catch (error) {
     console.error('💥 Seeding failed:', error);
     throw error;
@@ -819,7 +842,7 @@ Remember: Practice makes perfect! Use our interactive Git Engine to experiment w
 }
 
 // Run the seeding
-seedGitEngineLesson().catch(error => {
+seedGitEngineLesson().catch((error) => {
   console.error('💥 Git Engine lesson seeding failed:', error);
   process.exit(1);
 });

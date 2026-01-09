@@ -6,7 +6,10 @@ export class OAuthTables1700000000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Update user table to make password_hash nullable (if not already)
     const passwordHashColumn = await queryRunner.getTable('user');
-    if (passwordHashColumn?.findColumnByName('password_hash')?.isNullable === false) {
+    if (
+      passwordHashColumn?.findColumnByName('password_hash')?.isNullable ===
+      false
+    ) {
       await queryRunner.query(`
         ALTER TABLE "user" 
         ALTER COLUMN "password_hash" DROP NOT NULL
@@ -17,16 +20,24 @@ export class OAuthTables1700000000001 implements MigrationInterface {
     const userTable = await queryRunner.getTable('user');
     if (userTable) {
       if (!userTable.findColumnByName('first_name')) {
-        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "first_name" VARCHAR`);
+        await queryRunner.query(
+          `ALTER TABLE "user" ADD COLUMN "first_name" VARCHAR`,
+        );
       }
       if (!userTable.findColumnByName('last_name')) {
-        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "last_name" VARCHAR`);
+        await queryRunner.query(
+          `ALTER TABLE "user" ADD COLUMN "last_name" VARCHAR`,
+        );
       }
       if (!userTable.findColumnByName('avatar')) {
-        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "avatar" VARCHAR`);
+        await queryRunner.query(
+          `ALTER TABLE "user" ADD COLUMN "avatar" VARCHAR`,
+        );
       }
       if (!userTable.findColumnByName('is_active')) {
-        await queryRunner.query(`ALTER TABLE "user" ADD COLUMN "is_active" BOOLEAN NOT NULL DEFAULT true`);
+        await queryRunner.query(
+          `ALTER TABLE "user" ADD COLUMN "is_active" BOOLEAN NOT NULL DEFAULT true`,
+        );
       }
     }
 
@@ -108,17 +119,23 @@ export class OAuthTables1700000000001 implements MigrationInterface {
     );
 
     // Create unique index on provider and provider_id
-    await queryRunner.createIndex('oauth_provider', new TableIndex({
-      name: 'IDX_oauth_provider_provider_provider_id',
-      columnNames: ['provider', 'provider_id'],
-      isUnique: true,
-    }));
+    await queryRunner.createIndex(
+      'oauth_provider',
+      new TableIndex({
+        name: 'IDX_oauth_provider_provider_provider_id',
+        columnNames: ['provider', 'provider_id'],
+        isUnique: true,
+      }),
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop unique index first
-    await queryRunner.dropIndex('oauth_provider', 'IDX_oauth_provider_provider_provider_id');
-    
+    await queryRunner.dropIndex(
+      'oauth_provider',
+      'IDX_oauth_provider_provider_provider_id',
+    );
+
     // Drop oauth_provider table
     await queryRunner.dropTable('oauth_provider');
 

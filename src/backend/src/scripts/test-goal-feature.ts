@@ -25,10 +25,13 @@ async function testGoalFeature() {
     entities: [
       require('../modules/lessons/lesson.entity').Lesson,
       require('../modules/practice/entities/practice.entity').Practice,
-      require('../modules/practice/entities/practice-instruction.entity').PracticeInstruction,
+      require('../modules/practice/entities/practice-instruction.entity')
+        .PracticeInstruction,
       require('../modules/practice/entities/practice-hint.entity').PracticeHint,
-      require('../modules/practice/entities/practice-expected-command.entity').PracticeExpectedCommand,
-      require('../modules/practice/entities/practice-validation-rule.entity').PracticeValidationRule,
+      require('../modules/practice/entities/practice-expected-command.entity')
+        .PracticeExpectedCommand,
+      require('../modules/practice/entities/practice-validation-rule.entity')
+        .PracticeValidationRule,
       require('../modules/practice/entities/practice-tag.entity').PracticeTag,
     ],
     synchronize: true,
@@ -42,7 +45,7 @@ async function testGoalFeature() {
     // Get practice with goalRepositoryState
     const practices = await dataSource.getRepository(Practice).find({
       where: { isActive: true },
-      take: 1
+      take: 1,
     });
 
     if (practices.length === 0) {
@@ -64,12 +67,14 @@ async function testGoalFeature() {
 
     // Validate structure
     console.log('\n🔍 Validating goalRepositoryState structure:');
-    
+
     // Check commits
     if (goalState.commits && Array.isArray(goalState.commits)) {
       console.log(`✅ Commits: ${goalState.commits.length} found`);
       goalState.commits.forEach((commit, index) => {
-        console.log(`   ${index + 1}. ${commit.id.substring(0, 7)} - ${commit.message} (${commit.branch})`);
+        console.log(
+          `   ${index + 1}. ${commit.id.substring(0, 7)} - ${commit.message} (${commit.branch})`,
+        );
       });
     } else {
       console.log('❌ Commits array not found or invalid');
@@ -79,7 +84,9 @@ async function testGoalFeature() {
     if (goalState.branches && Array.isArray(goalState.branches)) {
       console.log(`✅ Branches: ${goalState.branches.length} found`);
       goalState.branches.forEach((branch, index) => {
-        console.log(`   ${index + 1}. ${branch.name} -> ${branch.commitId.substring(0, 7)}`);
+        console.log(
+          `   ${index + 1}. ${branch.name} -> ${branch.commitId.substring(0, 7)}`,
+        );
       });
     } else {
       console.log('❌ Branches array not found or invalid');
@@ -87,7 +94,9 @@ async function testGoalFeature() {
 
     // Check head
     if (goalState.head) {
-      console.log(`✅ HEAD: ${goalState.head.type} - ${goalState.head.type === 'branch' ? goalState.head.ref : 'detached'}`);
+      console.log(
+        `✅ HEAD: ${goalState.head.type} - ${goalState.head.type === 'branch' ? goalState.head.ref : 'detached'}`,
+      );
     } else {
       console.log('❌ HEAD not found');
     }
@@ -103,7 +112,7 @@ async function testGoalFeature() {
     console.log('\n🔄 Testing JSON serialization:');
     const jsonString = JSON.stringify(goalState);
     const parsedState: IRepositoryState = JSON.parse(jsonString);
-    
+
     if (parsedState.commits.length === goalState.commits.length) {
       console.log('✅ JSON serialization/deserialization works correctly');
     } else {
@@ -117,8 +126,9 @@ async function testGoalFeature() {
     console.log(`- Branches: ${goalState.branches.length}`);
     console.log(`- Tags: ${goalState.tags.length}`);
     console.log(`- HEAD: ${goalState.head?.type || 'null'}`);
-    console.log('\n✅ The goalRepositoryState is properly structured and ready for frontend visualization!');
-
+    console.log(
+      '\n✅ The goalRepositoryState is properly structured and ready for frontend visualization!',
+    );
   } catch (error) {
     console.error('❌ Test failed:', error);
     throw error;
@@ -129,7 +139,7 @@ async function testGoalFeature() {
 }
 
 // Run the test
-testGoalFeature().catch(error => {
+testGoalFeature().catch((error) => {
   console.error('💥 Goal feature test failed:', error);
   process.exit(1);
 });

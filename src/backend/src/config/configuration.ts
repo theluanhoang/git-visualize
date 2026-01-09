@@ -32,17 +32,23 @@ export default () => ({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-      callbackUrl: process.env.GOOGLE_CALLBACK_URL ?? 'http://localhost:8000/api/v1/auth/oauth/google/callback',
+      callbackUrl:
+        process.env.GOOGLE_CALLBACK_URL ??
+        'http://localhost:8000/api/v1/auth/oauth/google/callback',
     },
     github: {
       clientId: process.env.OAUTH_GITHUB_CLIENT_ID ?? '',
       clientSecret: process.env.OAUTH_GITHUB_CLIENT_SECRET ?? '',
-      callbackUrl: process.env.OAUTH_GITHUB_CALLBACK_URL ?? 'http://localhost:8000/api/v1/auth/oauth/github/callback',
+      callbackUrl:
+        process.env.OAUTH_GITHUB_CALLBACK_URL ??
+        'http://localhost:8000/api/v1/auth/oauth/github/callback',
     },
     facebook: {
       clientId: process.env.FACEBOOK_CLIENT_ID ?? '',
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET ?? '',
-      callbackUrl: process.env.FACEBOOK_CALLBACK_URL ?? 'http://localhost:8000/api/v1/auth/oauth/facebook/callback',
+      callbackUrl:
+        process.env.FACEBOOK_CALLBACK_URL ??
+        'http://localhost:8000/api/v1/auth/oauth/facebook/callback',
     },
   },
   mail: {
@@ -60,6 +66,14 @@ export default () => ({
     email: process.env.ADMIN_EMAIL ?? 'admin@example.com',
     password: process.env.ADMIN_PASSWORD ?? 'admin123',
   },
+  casso: {
+    apiKey: process.env.CASSO_API_KEY ?? '',
+    webhookSecret: process.env.CASSO_WEBHOOK_SECRET ?? '',
+    bankAccount: process.env.CASSO_BANK_ACCOUNT ?? '',
+    bankName: process.env.CASSO_BANK_NAME ?? '',
+    baseUrl: process.env.CASSO_BASE_URL ?? 'https://oauth.casso.vn/v2',
+  },
+  subscription: {
+    currency: process.env.SUBSCRIPTION_CURRENCY ?? 'VND',
+  },
 });
-
-

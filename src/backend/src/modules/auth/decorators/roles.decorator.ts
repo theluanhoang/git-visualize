@@ -5,5 +5,3 @@ export const ROLES_KEY = 'roles';
 export const Roles = (...roles: EUserRole[]) => SetMetadata(ROLES_KEY, roles);
 
 export const ForAdmin = () => Roles(EUserRole.ADMIN);
-
-

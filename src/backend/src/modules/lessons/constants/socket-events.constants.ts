@@ -12,7 +12,6 @@ export const SocketEvents = {
   },
 } as const;
 
-export type SocketEvent = 
-  | typeof SocketEvents.CLIENT_TO_SERVER[keyof typeof SocketEvents.CLIENT_TO_SERVER]
-  | typeof SocketEvents.SERVER_TO_CLIENT[keyof typeof SocketEvents.SERVER_TO_CLIENT];
-
+export type SocketEvent =
+  | (typeof SocketEvents.CLIENT_TO_SERVER)[keyof typeof SocketEvents.CLIENT_TO_SERVER]
+  | (typeof SocketEvents.SERVER_TO_CLIENT)[keyof typeof SocketEvents.SERVER_TO_CLIENT];

@@ -22,33 +22,45 @@ async function testPracticeAPI() {
 
   try {
     // Test 1: Get lesson with practices using includePractices parameter
-    console.log('1️⃣ Testing GET /lesson?slug=gioi-thieu-ve-git&includePractices=true');
-    const lessonWithPracticesResponse = await makeRequest(`${API_BASE}/lesson?slug=gioi-thieu-ve-git&includePractices=true`);
+    console.log(
+      '1️⃣ Testing GET /lesson?slug=gioi-thieu-ve-git&includePractices=true',
+    );
+    const lessonWithPracticesResponse = await makeRequest(
+      `${API_BASE}/lesson?slug=gioi-thieu-ve-git&includePractices=true`,
+    );
     console.log('✅ Success:', {
       total: lessonWithPracticesResponse.total,
-      dataCount: lessonWithPracticesResponse.data?.length || 0
+      dataCount: lessonWithPracticesResponse.data?.length || 0,
     });
-    
+
     // Type-safe access to practices using type guard
-    if (lessonWithPracticesResponse.data?.[0] && 'practices' in lessonWithPracticesResponse.data[0]) {
+    if (
+      lessonWithPracticesResponse.data?.[0] &&
+      'practices' in lessonWithPracticesResponse.data[0]
+    ) {
       const lesson = lessonWithPracticesResponse.data[0];
       console.log('📋 Lesson with practices:', {
         title: lesson.title,
         slug: lesson.slug,
         practicesCount: lesson.practices?.length || 0,
-        firstPractice: lesson.practices?.[0] ? {
-          title: lesson.practices[0].title,
-          instructions: lesson.practices[0].instructions?.length || 0,
-          hints: lesson.practices[0].hints?.length || 0,
-          expectedCommands: lesson.practices[0].expectedCommands?.length || 0,
-          validationRules: lesson.practices[0].validationRules?.length || 0,
-          tags: lesson.practices[0].tags?.length || 0
-        } : 'No practices found'
+        firstPractice: lesson.practices?.[0]
+          ? {
+              title: lesson.practices[0].title,
+              instructions: lesson.practices[0].instructions?.length || 0,
+              hints: lesson.practices[0].hints?.length || 0,
+              expectedCommands:
+                lesson.practices[0].expectedCommands?.length || 0,
+              validationRules: lesson.practices[0].validationRules?.length || 0,
+              tags: lesson.practices[0].tags?.length || 0,
+            }
+          : 'No practices found',
       });
     } else {
       console.log('📋 No lesson found or practices not included');
     }
-    console.log('📝 Note: This now uses the enhanced getLessons method with includePractices parameter and proper TypeScript types');
+    console.log(
+      '📝 Note: This now uses the enhanced getLessons method with includePractices parameter and proper TypeScript types',
+    );
     console.log('');
 
     // Test 2: Get all practices
@@ -56,16 +68,20 @@ async function testPracticeAPI() {
     const practicesResponse = await makeRequest(`${API_BASE}/practices`);
     console.log('✅ Success:', {
       total: practicesResponse.total,
-      count: practicesResponse.data?.length || 0
+      count: practicesResponse.data?.length || 0,
     });
     console.log('');
 
     // Test 3: Get practices by lesson slug using unified endpoint
-    console.log('3️⃣ Testing GET /practices?lessonSlug=gioi-thieu-ve-git&isActive=true');
-    const practicesBySlugResponse = await makeRequest(`${API_BASE}/practices?lessonSlug=gioi-thieu-ve-git&isActive=true`);
+    console.log(
+      '3️⃣ Testing GET /practices?lessonSlug=gioi-thieu-ve-git&isActive=true',
+    );
+    const practicesBySlugResponse = await makeRequest(
+      `${API_BASE}/practices?lessonSlug=gioi-thieu-ve-git&isActive=true`,
+    );
     console.log('✅ Success:', {
       total: practicesBySlugResponse.total,
-      dataCount: practicesBySlugResponse.data?.length || 0
+      dataCount: practicesBySlugResponse.data?.length || 0,
     });
     console.log('📝 Note: Now using unified endpoint with query parameters');
     console.log('');
@@ -80,20 +96,18 @@ async function testPracticeAPI() {
       estimatedTime: 5,
       instructions: [
         { content: 'Test instruction 1', order: 0 },
-        { content: 'Test instruction 2', order: 1 }
+        { content: 'Test instruction 2', order: 1 },
       ],
-      hints: [
-        { content: 'Test hint 1', order: 0 }
-      ],
-      expectedCommands: [
-        { command: 'git status', order: 0, isRequired: true }
-      ],
+      hints: [{ content: 'Test hint 1', order: 0 }],
+      expectedCommands: [{ command: 'git status', order: 0, isRequired: true }],
       validationRules: [
-        { type: 'min_commands', value: '1', message: 'Need at least 1 command' }
+        {
+          type: 'min_commands',
+          value: '1',
+          message: 'Need at least 1 command',
+        },
       ],
-      tags: [
-        { name: 'test', color: '#ff0000' }
-      ]
+      tags: [{ name: 'test', color: '#ff0000' }],
     };
 
     const createResponse = await makeRequest(`${API_BASE}/practices`, {
@@ -102,13 +116,15 @@ async function testPracticeAPI() {
     });
     console.log('✅ Success:', {
       id: createResponse.id,
-      title: createResponse.title
+      title: createResponse.title,
     });
     console.log('');
 
     // Test 5: Get the created practice
     console.log('5️⃣ Testing GET /practices/:id');
-    const getPracticeResponse = await makeRequest(`${API_BASE}/practices/${createResponse.id}`);
+    const getPracticeResponse = await makeRequest(
+      `${API_BASE}/practices/${createResponse.id}`,
+    );
     console.log('✅ Success:', {
       id: getPracticeResponse.id,
       title: getPracticeResponse.title,
@@ -116,7 +132,7 @@ async function testPracticeAPI() {
       hints: getPracticeResponse.hints?.length || 0,
       expectedCommands: getPracticeResponse.expectedCommands?.length || 0,
       validationRules: getPracticeResponse.validationRules?.length || 0,
-      tags: getPracticeResponse.tags?.length || 0
+      tags: getPracticeResponse.tags?.length || 0,
     });
     console.log('');
 
@@ -124,16 +140,19 @@ async function testPracticeAPI() {
     console.log('6️⃣ Testing PUT /practices/:id');
     const updateData = {
       title: 'Updated Test Practice',
-      difficulty: 3
+      difficulty: 3,
     };
-    const updateResponse = await makeRequest(`${API_BASE}/practices/${createResponse.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updateData),
-    });
+    const updateResponse = await makeRequest(
+      `${API_BASE}/practices/${createResponse.id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      },
+    );
     console.log('✅ Success:', {
       id: updateResponse.id,
       title: updateResponse.title,
-      difficulty: updateResponse.difficulty
+      difficulty: updateResponse.difficulty,
     });
     console.log('');
 
@@ -155,14 +174,16 @@ async function testPracticeAPI() {
 
     // Test 9: Delete the practice
     console.log('9️⃣ Testing DELETE /practices/:id');
-    const deleteResponse = await makeRequest(`${API_BASE}/practices/${createResponse.id}`, {
-      method: 'DELETE',
-    });
+    const deleteResponse = await makeRequest(
+      `${API_BASE}/practices/${createResponse.id}`,
+      {
+        method: 'DELETE',
+      },
+    );
     console.log('✅ Success:', deleteResponse);
     console.log('');
 
     console.log('🎉 All tests passed!');
-
   } catch (error: any) {
     console.error('❌ Test failed:', {
       message: error.message,

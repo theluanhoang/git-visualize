@@ -1,7 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AiAssistantRequestDto, AiAssistantResponseDto } from '../dto/ai-assistant.dto';
+import {
+  AiAssistantRequestDto,
+  AiAssistantResponseDto,
+} from '../dto/ai-assistant.dto';
 import { PracticeAggregateService } from './practice-aggregate.service';
 import type { IRepositoryState } from '../../git-engine/git-engine.interface';
 
@@ -15,13 +18,17 @@ export class PracticeAiAssistantService {
   ) {
     const apiKey = this.configService.get<string>('ai.geminiApiKey');
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY not found. AI Assistant will not work properly.');
+      console.warn(
+        'GEMINI_API_KEY not found. AI Assistant will not work properly.',
+      );
     } else {
       this.genAI = new GoogleGenerativeAI(apiKey);
     }
   }
 
-  async getAiResponse(request: AiAssistantRequestDto): Promise<AiAssistantResponseDto> {
+  async getAiResponse(
+    request: AiAssistantRequestDto,
+  ): Promise<AiAssistantResponseDto> {
     try {
       // Validate input
       if (!request.practiceId) {
@@ -51,11 +58,13 @@ export class PracticeAiAssistantService {
 
       // Gọi Gemini AI
       if (!this.genAI) {
-        throw new BadRequestException('AI service is not configured. Please set GEMINI_API_KEY environment variable.');
+        throw new BadRequestException(
+          'AI service is not configured. Please set GEMINI_API_KEY environment variable.',
+        );
       }
 
-      const modelInstance = this.genAI.getGenerativeModel({ 
-        model: 'gemini-2.5-flash' 
+      const modelInstance = this.genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
       });
 
       const result = await modelInstance.generateContent(prompt);
@@ -63,7 +72,9 @@ export class PracticeAiAssistantService {
       const responseText = response.text();
 
       if (!responseText || responseText.trim().length === 0) {
-        throw new BadRequestException('AI returned empty response. Please try again.');
+        throw new BadRequestException(
+          'AI returned empty response. Please try again.',
+        );
       }
 
       // Parse response từ AI
@@ -82,31 +93,52 @@ export class PracticeAiAssistantService {
       }
 
       // Xử lý các lỗi từ Gemini API
-      if (error.message?.includes('503') || error.message?.includes('Service Unavailable')) {
-        throw new BadRequestException('AI service is temporarily unavailable. Please try again in a few moments.');
+      if (
+        error.message?.includes('503') ||
+        error.message?.includes('Service Unavailable')
+      ) {
+        throw new BadRequestException(
+          'AI service is temporarily unavailable. Please try again in a few moments.',
+        );
       }
-      if (error.message?.includes('429') || error.message?.includes('Rate limit')) {
-        throw new BadRequestException('AI service rate limit exceeded. Please wait a moment before trying again.');
+      if (
+        error.message?.includes('429') ||
+        error.message?.includes('Rate limit')
+      ) {
+        throw new BadRequestException(
+          'AI service rate limit exceeded. Please wait a moment before trying again.',
+        );
       }
-      if (error.message?.includes('401') || error.message?.includes('403') || error.message?.includes('API key')) {
-        throw new BadRequestException('AI service configuration error. Please contact administrator.');
+      if (
+        error.message?.includes('401') ||
+        error.message?.includes('403') ||
+        error.message?.includes('API key')
+      ) {
+        throw new BadRequestException(
+          'AI service configuration error. Please contact administrator.',
+        );
       }
-      if (error.message?.includes('404') || error.message?.includes('not found')) {
-        throw new BadRequestException('AI model not found. Please contact administrator.');
+      if (
+        error.message?.includes('404') ||
+        error.message?.includes('not found')
+      ) {
+        throw new BadRequestException(
+          'AI model not found. Please contact administrator.',
+        );
       }
 
       // Lỗi chung
       throw new BadRequestException(
-        error.message 
-          ? `Failed to get AI response: ${error.message}` 
-          : 'Failed to get AI response. Please try again later.'
+        error.message
+          ? `Failed to get AI response: ${error.message}`
+          : 'Failed to get AI response. Please try again later.',
       );
     }
   }
 
   private buildPrompt(request: AiAssistantRequestDto, practice: any): string {
-    const repoStateSummary = this.summarizeRepositoryState(request.repoState as any);
-    
+    const repoStateSummary = this.summarizeRepositoryState(request.repoState);
+
     return `🎭 BẠN LÀ TRỢ LÝ AI HỖ TRỢ THỰC HÀNH GIT
 
 📌 VAI TRÒ:
@@ -122,9 +154,16 @@ Người học đang làm bài Practice Git với:
 - Tiêu đề: ${practice.title || 'N/A'}
 - Mô tả: ${practice.scenario || 'N/A'}
 - Độ khó: ${practice.difficulty || 1}/5
-${practice.instructions && Array.isArray(practice.instructions) && practice.instructions.length > 0 
-  ? `- Hướng dẫn: ${practice.instructions.map((i: any) => i.content || '').filter((c: string) => c).join('; ')}` 
-  : ''}
+${
+  practice.instructions &&
+  Array.isArray(practice.instructions) &&
+  practice.instructions.length > 0
+    ? `- Hướng dẫn: ${practice.instructions
+        .map((i: any) => i.content || '')
+        .filter((c: string) => c)
+        .join('; ')}`
+    : ''
+}
 
 📌 TRẠNG THÁI REPOSITORY HIỆN TẠI:
 ${repoStateSummary}
@@ -195,16 +234,18 @@ Hãy trả lời bằng tiếng Việt, theo đúng format JSON trên.`;
     if (repoState.commits && repoState.commits.length > 0) {
       const recentCommits = repoState.commits.slice(-3);
       parts.push(`  + Các commit gần nhất:`);
-      recentCommits.forEach(commit => {
+      recentCommits.forEach((commit) => {
         const commitId = commit.id?.substring(0, 7) || 'N/A';
-        parts.push(`    • ${commitId}: "${commit.message || 'N/A'}" (branch: ${commit.branch || 'N/A'})`);
+        parts.push(
+          `    • ${commitId}: "${commit.message || 'N/A'}" (branch: ${commit.branch || 'N/A'})`,
+        );
       });
     }
 
     // Branches
     parts.push(`- Branches: ${repoState.branches?.length || 0} branch(es)`);
     if (repoState.branches && repoState.branches.length > 0) {
-      repoState.branches.forEach(branch => {
+      repoState.branches.forEach((branch) => {
         const commitId = branch.commitId?.substring(0, 7) || 'N/A';
         parts.push(`  + ${branch.name || 'N/A'} -> ${commitId}`);
       });
@@ -213,7 +254,9 @@ Hãy trả lời bằng tiếng Việt, theo đúng format JSON trên.`;
     // Head
     if (repoState.head) {
       if (repoState.head.type === 'branch') {
-        parts.push(`- HEAD: đang ở branch "${repoState.head.ref}" (commit: ${repoState.head.commitId?.substring(0, 7) || 'N/A'})`);
+        parts.push(
+          `- HEAD: đang ở branch "${repoState.head.ref}" (commit: ${repoState.head.commitId?.substring(0, 7) || 'N/A'})`,
+        );
       } else {
         const commitId = repoState.head.ref?.substring(0, 7) || 'N/A';
         parts.push(`- HEAD: detached HEAD tại commit ${commitId}`);
@@ -224,8 +267,10 @@ Hãy trả lời bằng tiếng Việt, theo đúng format JSON trên.`;
 
     // Working directory
     if (repoState.workingDirectory && repoState.workingDirectory.length > 0) {
-      parts.push(`- Working Directory: ${repoState.workingDirectory.length} file(s)`);
-      repoState.workingDirectory.forEach(file => {
+      parts.push(
+        `- Working Directory: ${repoState.workingDirectory.length} file(s)`,
+      );
+      repoState.workingDirectory.forEach((file) => {
         parts.push(`  + ${file.path} (${file.status})`);
       });
     } else {
@@ -234,8 +279,10 @@ Hãy trả lời bằng tiếng Việt, theo đúng format JSON trên.`;
 
     // Staging area
     if (repoState.stagingArea && repoState.stagingArea.length > 0) {
-      parts.push(`- Staging Area: ${repoState.stagingArea.length} file(s) đã staged`);
-      repoState.stagingArea.forEach(path => {
+      parts.push(
+        `- Staging Area: ${repoState.stagingArea.length} file(s) đã staged`,
+      );
+      repoState.stagingArea.forEach((path) => {
         parts.push(`  + ${path}`);
       });
     } else {
@@ -256,9 +303,11 @@ Hãy trả lời bằng tiếng Việt, theo đúng format JSON trên.`;
       const parsed = JSON.parse(jsonStr);
 
       const response: AiAssistantResponseDto = {
-        situationAnalysis: parsed.situationAnalysis || 'Không thể phân tích tình huống.',
+        situationAnalysis:
+          parsed.situationAnalysis || 'Không thể phân tích tình huống.',
         problem: parsed.problem || 'Không xác định được vấn đề.',
-        gitKnowledge: parsed.gitKnowledge || 'Không có kiến thức Git liên quan.',
+        gitKnowledge:
+          parsed.gitKnowledge || 'Không có kiến thức Git liên quan.',
         solution: parsed.solution || 'Không có hướng giải quyết.',
         suggestedCommand: parsed.suggestedCommand || undefined,
         warning: parsed.warning || undefined,

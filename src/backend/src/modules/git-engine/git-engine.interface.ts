@@ -5,7 +5,7 @@ export interface GitCommandRequest {
 
 export interface GitCommandResponse {
   success: boolean;
-  output: string;       
+  output: string;
   repositoryState: IRepositoryState | null;
 }
 
@@ -21,7 +21,13 @@ export interface PracticeValidationResponse {
 export type DifferenceValue = string | number | boolean | null | string[];
 
 export interface RepositoryDifference {
-  type: 'commit' | 'branch' | 'tag' | 'head' | 'working_directory' | 'staging_area';
+  type:
+    | 'commit'
+    | 'branch'
+    | 'tag'
+    | 'head'
+    | 'working_directory'
+    | 'staging_area';
   field: string;
   expected: DifferenceValue;
   actual: DifferenceValue;
@@ -29,9 +35,9 @@ export interface RepositoryDifference {
 }
 
 export enum ETypeGitObject {
-  BLOB = "BLOB",
-  TREE = "TREE",
-  COMMIT = "COMMIT"
+  BLOB = 'BLOB',
+  TREE = 'TREE',
+  COMMIT = 'COMMIT',
 }
 
 export interface ICommitter {
@@ -74,17 +80,17 @@ export interface ICommit {
 
 export interface IBranch {
   name: string;
-  commitId: string;      
+  commitId: string;
 }
 
 export interface ITag {
   name: string;
-  commitId: string;      
+  commitId: string;
 }
 
 export type IHead =
-  | { type: "branch"; ref: string; commitId: string }
-  | { type: "commit"; ref: string } 
+  | { type: 'branch'; ref: string; commitId: string }
+  | { type: 'commit'; ref: string }
   | null;
 
 export enum FileStatus {
@@ -92,7 +98,7 @@ export enum FileStatus {
   MODIFIED = 'modified',
   DELETED = 'deleted',
   STAGED = 'staged',
-  UNMODIFIED = 'unmodified'
+  UNMODIFIED = 'unmodified',
 }
 
 export interface IFileState {

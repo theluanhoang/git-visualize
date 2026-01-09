@@ -1,6 +1,17 @@
-import { IsEnum, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUrl,
+  ValidateIf,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { SourceType, Language, ModelType, OutlineStyle } from './generate-lesson.dto';
+import {
+  SourceType,
+  Language,
+  ModelType,
+  OutlineStyle,
+} from './generate-lesson.dto';
 
 export class GenerateLessonMultipartDto {
   @ApiProperty({
@@ -60,4 +71,3 @@ export class GenerateLessonMultipartDto {
   @IsOptional()
   additionalInstructions?: string;
 }
-

@@ -11,7 +11,13 @@ export default async function globalSetup() {
 
   const dbName = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-  const adminClient = new Client({ host, port, user, password, database: adminDb });
+  const adminClient = new Client({
+    host,
+    port,
+    user,
+    password,
+    database: adminDb,
+  });
   await adminClient.connect();
   try {
     await adminClient.query(`CREATE DATABASE "${dbName}"`);
@@ -25,5 +31,3 @@ export default async function globalSetup() {
   process.env.NODE_ENV = 'test';
   process.env.DB_NAME = dbName;
 }
-
-
