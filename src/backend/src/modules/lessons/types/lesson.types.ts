@@ -22,12 +22,15 @@ export interface LessonWithPractices extends Lesson {
  * Generic response type for getLessons method
  * T can be either Lesson or LessonWithPractices
  */
-export type GetLessonsResponse<T extends Lesson = Lesson> = PaginatedResponse<T>;
+export type GetLessonsResponse<T extends Lesson = Lesson> =
+  PaginatedResponse<T>;
 
 /**
  * Type guard to check if lesson has practices
  */
-export function lessonHasPractices(lesson: Lesson): lesson is LessonWithPractices {
+export function lessonHasPractices(
+  lesson: Lesson,
+): lesson is LessonWithPractices {
   return 'practices' in lesson;
 }
 
@@ -35,7 +38,7 @@ export function lessonHasPractices(lesson: Lesson): lesson is LessonWithPractice
  * Type guard to check if response includes practices
  */
 export function responseHasPractices(
-  response: GetLessonsResponse<Lesson | LessonWithPractices>
+  response: GetLessonsResponse<Lesson | LessonWithPractices>,
 ): response is GetLessonsResponse<LessonWithPractices> {
   return response.data.length > 0 && lessonHasPractices(response.data[0]);
 }

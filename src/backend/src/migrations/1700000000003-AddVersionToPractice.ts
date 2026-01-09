@@ -1,16 +1,18 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddVersionToPractice1700000000003 implements MigrationInterface {
-    name = 'AddVersionToPractice1700000000003'
+  name = 'AddVersionToPractice1700000000003';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        const practiceTable = await queryRunner.getTable('practice');
-        if (practiceTable && !practiceTable.findColumnByName('version')) {
-            await queryRunner.query(`ALTER TABLE "practice" ADD "version" integer NOT NULL DEFAULT 1`);
-        }
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    const practiceTable = await queryRunner.getTable('practice');
+    if (practiceTable && !practiceTable.findColumnByName('version')) {
+      await queryRunner.query(
+        `ALTER TABLE "practice" ADD "version" integer NOT NULL DEFAULT 1`,
+      );
     }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "practice" DROP COLUMN "version"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`ALTER TABLE "practice" DROP COLUMN "version"`);
+  }
 }

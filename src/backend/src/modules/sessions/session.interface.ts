@@ -1,4 +1,4 @@
 export enum SessionType {
-    PASSWORD = 'PASSWORD',
-    OAUTH = 'OAUTH',
+  PASSWORD = 'PASSWORD',
+  OAUTH = 'OAUTH',
 }

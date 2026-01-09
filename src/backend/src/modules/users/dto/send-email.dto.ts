@@ -12,5 +12,3 @@ export class SendEmailDto {
   @MinLength(1)
   message: string;
 }
-
-

@@ -35,7 +35,9 @@ export class MailService {
     attachments?: MailAttachment[];
   }): Promise<void> {
     await this.transporter.sendMail({
-      from: this.config.get<string>('mail.from') || this.config.get<string>('mail.user'),
+      from:
+        this.config.get<string>('mail.from') ||
+        this.config.get<string>('mail.user'),
       to: options.to,
       subject: options.subject,
       text: options.text,
@@ -48,5 +50,3 @@ export class MailService {
     });
   }
 }
-
-

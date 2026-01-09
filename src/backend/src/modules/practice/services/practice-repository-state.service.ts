@@ -12,47 +12,57 @@ export class PracticeRepositoryStateService {
     private readonly repo: Repository<PracticeRepositoryState>,
   ) {}
 
-  async get(practiceId: string, userId: string): Promise<{ state: IRepositoryState | null; version: number }> {
+  async get(
+    practiceId: string,
+    userId: string,
+  ): Promise<{ state: IRepositoryState | null; version: number }> {
     const found = await this.repo.findOne({ where: { practiceId, userId } });
     return {
-      state: found ? (found.repositoryState as IRepositoryState) : null,
-      version: found?.version || 0
+      state: found ? found.repositoryState : null,
+      version: found?.version || 0,
     };
   }
 
-  async upsert(practiceId: string, userId: string, repositoryState: IRepositoryState, clientVersion?: number): Promise<{ state: IRepositoryState; version: number }> {
+  async upsert(
+    practiceId: string,
+    userId: string,
+    repositoryState: IRepositoryState,
+    clientVersion?: number,
+  ): Promise<{ state: IRepositoryState; version: number }> {
     const existing = await this.repo.findOne({ where: { practiceId, userId } });
-    
+
     if (existing) {
       // Nếu client version cũ hơn server version, tự động sync với server version
       // Thay vì throw error, chúng ta sẽ merge hoặc overwrite với state mới
       if (clientVersion && clientVersion < existing.version) {
         // Log warning nhưng vẫn cho phép update với state mới từ client
         // Điều này giúp tránh mất dữ liệu khi có nhiều tab/window mở cùng lúc
-        console.warn(`Version conflict detected: client version ${clientVersion} is older than server version ${existing.version}. Updating with client state.`);
+        console.warn(
+          `Version conflict detected: client version ${clientVersion} is older than server version ${existing.version}. Updating with client state.`,
+        );
       }
-      
+
       existing.repositoryState = repositoryState;
       existing.version += 1;
       existing.lastModifiedBy = 'client';
       await this.repo.save(existing);
       return {
-        state: existing.repositoryState as IRepositoryState,
-        version: existing.version
+        state: existing.repositoryState,
+        version: existing.version,
       };
     }
-    
-    const created = this.repo.create({ 
-      practiceId, 
-      userId, 
+
+    const created = this.repo.create({
+      practiceId,
+      userId,
       repositoryState,
       version: 1,
-      lastModifiedBy: 'client'
+      lastModifiedBy: 'client',
     });
     await this.repo.save(created);
     return {
-      state: created.repositoryState as IRepositoryState,
-      version: created.version
+      state: created.repositoryState,
+      version: created.version,
     };
   }
 
@@ -64,7 +74,9 @@ export class PracticeRepositoryStateService {
     await this.repo.delete(existing.id);
   }
 
-  async getPracticeUserMappings(practiceIds: string[]): Promise<Array<{ practiceId: string; userId: string }>> {
+  async getPracticeUserMappings(
+    practiceIds: string[],
+  ): Promise<Array<{ practiceId: string; userId: string }>> {
     if (practiceIds.length === 0) {
       return [];
     }
@@ -79,7 +91,9 @@ export class PracticeRepositoryStateService {
     return result;
   }
 
-  async getCompletionCountsByLessons(lessonIds: string[]): Promise<Record<string, number>> {
+  async getCompletionCountsByLessons(
+    lessonIds: string[],
+  ): Promise<Record<string, number>> {
     if (lessonIds.length === 0) {
       return {};
     }
@@ -91,7 +105,7 @@ export class PracticeRepositoryStateService {
       .leftJoin(
         PracticeRepositoryState,
         'prs',
-        'prs.practiceId = CAST(practice.id AS varchar) AND prs.practiceId ~ \'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\''
+        "prs.practiceId = CAST(practice.id AS varchar) AND prs.practiceId ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'",
       )
       .where('practice.lessonId IN (:...lessonIds)', { lessonIds })
       .andWhere('practice.isActive = :isActive', { isActive: true })
@@ -103,7 +117,7 @@ export class PracticeRepositoryStateService {
       completionCounts[row.lessonId] = parseInt(row.count, 10) || 0;
     });
 
-    lessonIds.forEach(lessonId => {
+    lessonIds.forEach((lessonId) => {
       if (!(lessonId in completionCounts)) {
         completionCounts[lessonId] = 0;
       }
@@ -112,5 +126,3 @@ export class PracticeRepositoryStateService {
     return completionCounts;
   }
 }
-
-

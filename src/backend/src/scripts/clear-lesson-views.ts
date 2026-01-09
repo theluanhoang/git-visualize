@@ -31,7 +31,9 @@ async function clearLessonViews() {
     console.log('✅ Database connected\n');
 
     // Count existing records
-    const viewCount = await dataSource.query('SELECT COUNT(*) as count FROM lesson_view');
+    const viewCount = await dataSource.query(
+      'SELECT COUNT(*) as count FROM lesson_view',
+    );
     const count = parseInt(viewCount[0]?.count || '0', 10);
     console.log(`📊 Found ${count} lesson view records\n`);
 
@@ -71,4 +73,3 @@ clearLessonViews()
     console.error('\n❌ Script failed:', error);
     process.exit(1);
   });
-

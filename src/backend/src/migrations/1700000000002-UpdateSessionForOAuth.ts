@@ -8,52 +8,64 @@ export class UpdateSessionForOAuth1700000000002 implements MigrationInterface {
     const sessionTable = await queryRunner.getTable('session');
     if (sessionTable) {
       const columnsToAdd: TableColumn[] = [];
-      
+
       if (!sessionTable.findColumnByName('session_type')) {
-        columnsToAdd.push(new TableColumn({
-          name: 'session_type',
-          type: 'enum',
-          enum: ['PASSWORD', 'OAUTH'],
-          default: "'PASSWORD'",
-        }));
+        columnsToAdd.push(
+          new TableColumn({
+            name: 'session_type',
+            type: 'enum',
+            enum: ['PASSWORD', 'OAUTH'],
+            default: "'PASSWORD'",
+          }),
+        );
       }
       if (!sessionTable.findColumnByName('oauth_provider')) {
-        columnsToAdd.push(new TableColumn({
-          name: 'oauth_provider',
-          type: 'enum',
-          enum: ['GOOGLE', 'GITHUB', 'FACEBOOK'],
-          isNullable: true,
-        }));
+        columnsToAdd.push(
+          new TableColumn({
+            name: 'oauth_provider',
+            type: 'enum',
+            enum: ['GOOGLE', 'GITHUB', 'FACEBOOK'],
+            isNullable: true,
+          }),
+        );
       }
       if (!sessionTable.findColumnByName('oauth_provider_id')) {
-        columnsToAdd.push(new TableColumn({
-          name: 'oauth_provider_id',
-          type: 'varchar',
-          isNullable: true,
-        }));
+        columnsToAdd.push(
+          new TableColumn({
+            name: 'oauth_provider_id',
+            type: 'varchar',
+            isNullable: true,
+          }),
+        );
       }
       if (!sessionTable.findColumnByName('oauth_access_token_hash')) {
-        columnsToAdd.push(new TableColumn({
-          name: 'oauth_access_token_hash',
-          type: 'varchar',
-          isNullable: true,
-        }));
+        columnsToAdd.push(
+          new TableColumn({
+            name: 'oauth_access_token_hash',
+            type: 'varchar',
+            isNullable: true,
+          }),
+        );
       }
       if (!sessionTable.findColumnByName('oauth_refresh_token_hash')) {
-        columnsToAdd.push(new TableColumn({
-          name: 'oauth_refresh_token_hash',
-          type: 'varchar',
-          isNullable: true,
-        }));
+        columnsToAdd.push(
+          new TableColumn({
+            name: 'oauth_refresh_token_hash',
+            type: 'varchar',
+            isNullable: true,
+          }),
+        );
       }
       if (!sessionTable.findColumnByName('oauth_token_expires_at')) {
-        columnsToAdd.push(new TableColumn({
-          name: 'oauth_token_expires_at',
-          type: 'timestamptz',
-          isNullable: true,
-        }));
+        columnsToAdd.push(
+          new TableColumn({
+            name: 'oauth_token_expires_at',
+            type: 'timestamptz',
+            isNullable: true,
+          }),
+        );
       }
-      
+
       if (columnsToAdd.length > 0) {
         await queryRunner.addColumns('session', columnsToAdd);
       }
@@ -72,7 +84,7 @@ export class UpdateSessionForOAuth1700000000002 implements MigrationInterface {
       if (oauthProviderTable.findColumnByName('token_expires_at')) {
         columnsToDrop.push('token_expires_at');
       }
-      
+
       if (columnsToDrop.length > 0) {
         await queryRunner.dropColumns('oauth_provider', columnsToDrop);
       }

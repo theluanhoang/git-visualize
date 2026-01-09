@@ -8,7 +8,9 @@ describe('Git Engine E2E', () => {
   let server: any;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleFixture.createNestApplication();
     await app.init();
     server = app.getHttpServer();
@@ -22,10 +24,8 @@ describe('Git Engine E2E', () => {
     const res = await request(server)
       .post('/git/execute')
       .send({ command: 'git init' });
-    expect([200,201]).toContain(res.status);
+    expect([200, 201]).toContain(res.status);
     expect(res.body).toHaveProperty('success', true);
     expect(res.body).toHaveProperty('output');
   });
 });
-
-

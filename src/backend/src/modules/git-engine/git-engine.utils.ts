@@ -22,22 +22,22 @@ export function parseArgs(args: string[]): ParsedArgs {
     const arg = args[i];
 
     // flag dạng -m "msg"
-    if (arg === "-m" && args[i + 1]) {
-      flags["m"] = args[i + 1];
+    if (arg === '-m' && args[i + 1]) {
+      flags['m'] = args[i + 1];
       i += 2;
       continue;
     }
 
     // flag dạng --author="Name <email>"
-    if (arg.startsWith("--author=")) {
-      flags["author"] = arg.substring("--author=".length).replace(/^"|"$/g, "");
+    if (arg.startsWith('--author=')) {
+      flags['author'] = arg.substring('--author='.length).replace(/^"|"$/g, '');
       i++;
       continue;
     }
 
     // flag boolean như --amend
-    if (arg === "--amend") {
-      flags["amend"] = true;
+    if (arg === '--amend') {
+      flags['amend'] = true;
       i++;
       continue;
     }

@@ -13,12 +13,14 @@ async function bootstrap() {
   app.setGlobalPrefix(globalPrefix);
 
   // Global validation
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: { enableImplicitConversion: true },
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
 
   // API versioning
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
@@ -27,7 +29,9 @@ async function bootstrap() {
   if (configService.get<boolean>('swagger.enabled') !== false) {
     const docConfig = new DocumentBuilder()
       .setTitle(configService.get<string>('swagger.title') ?? 'API')
-      .setDescription(configService.get<string>('swagger.description') ?? 'API docs')
+      .setDescription(
+        configService.get<string>('swagger.description') ?? 'API docs',
+      )
       .setVersion(configService.get<string>('swagger.version') ?? '1.0')
       .addBearerAuth()
       .build();
@@ -38,7 +42,9 @@ async function bootstrap() {
 
   const port = configService.get<number>('app.port') ?? 8000;
   await app.listen(port, () => {
-    console.log(`Git Visualized Backend is running on http://localhost:${port}`);
+    console.log(
+      `Git Visualized Backend is running on http://localhost:${port}`,
+    );
   });
 }
 

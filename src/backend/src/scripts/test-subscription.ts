@@ -1,11 +1,15 @@
 import { DataSource } from 'typeorm';
 import { createDataSourceOptions } from '../config/data-source-options';
-import { Subscription, ESubscriptionPlanType, ESubscriptionStatus } from '../modules/subscription/subscription.entity';
+import {
+  Subscription,
+  ESubscriptionPlanType,
+  ESubscriptionStatus,
+} from '../modules/subscription/subscription.entity';
 import { User, EUserSubscriptionStatus } from '../modules/users/user.entity';
 
 async function testSubscription() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -20,7 +24,10 @@ async function testSubscription() {
       );
     `);
 
-    console.log('Subscription table exists:', subscriptionTableExists[0]?.exists);
+    console.log(
+      'Subscription table exists:',
+      subscriptionTableExists[0]?.exists,
+    );
 
     // Check if user table has subscription columns
     const userColumns = await dataSource.query(`
@@ -52,15 +59,24 @@ async function testSubscription() {
     // Try to get a user
     const userRepo = dataSource.getRepository(User);
     const users = await userRepo.find({ take: 1 });
-    console.log('Sample user:', users.length > 0 ? { id: users[0].id, email: users[0].email, subscriptionStatus: users[0].subscriptionStatus } : 'No users found');
+    console.log(
+      'Sample user:',
+      users.length > 0
+        ? {
+            id: users[0].id,
+            email: users[0].email,
+            subscriptionStatus: users[0].subscriptionStatus,
+          }
+        : 'No users found',
+    );
 
     if (users.length > 0) {
       const testUserId = users[0].id;
-      
+
       // Try to create a subscription
       console.log('\n🧪 Testing subscription creation...');
       const subscriptionRepo = dataSource.getRepository(Subscription);
-      
+
       const startDate = new Date();
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + 1);
@@ -75,7 +91,7 @@ async function testSubscription() {
       });
 
       console.log('Subscription object:', subscription);
-      
+
       try {
         const saved = await subscriptionRepo.save(subscription);
         console.log('✅ Subscription created successfully:', saved.id);
@@ -115,4 +131,3 @@ async function testSubscription() {
 }
 
 void testSubscription();
-

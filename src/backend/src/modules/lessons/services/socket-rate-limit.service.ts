@@ -14,7 +14,7 @@ export class SocketRateLimitService {
   private readonly rateLimitMap = new Map<string, RateLimitEntry>();
 
   private readonly windowMs: number =
-    parseInt(process.env.SOCKET_RATE_LIMIT_WINDOW_MS || '900000', 10) || 900000; 
+    parseInt(process.env.SOCKET_RATE_LIMIT_WINDOW_MS || '900000', 10) || 900000;
   private readonly maxRequests: number =
     parseInt(process.env.SOCKET_RATE_LIMIT_MAX || '100', 10) || 100;
   private readonly maxConnectionsPerUser: number =
@@ -23,7 +23,10 @@ export class SocketRateLimitService {
 
   private readonly userConnections = new Map<string, Set<string>>();
 
-  canConnect(socket: Socket, userId?: string): {
+  canConnect(
+    socket: Socket,
+    userId?: string,
+  ): {
     allowed: boolean;
     reason?: string;
   } {
@@ -62,7 +65,10 @@ export class SocketRateLimitService {
     return { allowed: true };
   }
 
-  canSendMessage(socket: Socket, userId?: string): {
+  canSendMessage(
+    socket: Socket,
+    userId?: string,
+  ): {
     allowed: boolean;
     reason?: string;
   } {
@@ -142,4 +148,3 @@ export class SocketRateLimitService {
     }
   }
 }
-

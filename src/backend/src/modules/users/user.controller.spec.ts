@@ -11,11 +11,14 @@ describe('UserController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UserController],
       providers: [
-        { provide: UserService, useValue: {
-          getCurrentUserProfile: jest.fn(),
-          updateCurrentUserProfile: jest.fn(),
-          getCurrentUserStats: jest.fn(),
-        } },
+        {
+          provide: UserService,
+          useValue: {
+            getCurrentUserProfile: jest.fn(),
+            updateCurrentUserProfile: jest.fn(),
+            getCurrentUserStats: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -30,19 +33,22 @@ describe('UserController', () => {
   });
 
   it('updateCurrentUser proxies with sub and body', async () => {
-    userService.updateCurrentUserProfile.mockResolvedValue({ id: 'u1', name: 'n' } as any);
-    const res = await controller.updateCurrentUser({ user: { sub: 'u1' } } as any, { name: 'n' } as any);
+    userService.updateCurrentUserProfile.mockResolvedValue({
+      id: 'u1',
+      name: 'n',
+    } as any);
+    const res = await controller.updateCurrentUser(
+      { user: { sub: 'u1' } } as any,
+      { name: 'n' } as any,
+    );
     expect(res).toEqual({ id: 'u1', name: 'n' });
   });
 
   it('getUserStats proxies with sub', async () => {
-    userService.getCurrentUserStats.mockResolvedValue({ lessonsViewed: 1 } as any);
+    userService.getCurrentUserStats.mockResolvedValue({
+      lessonsViewed: 1,
+    } as any);
     const res = await controller.getUserStats({ user: { sub: 'u1' } } as any);
     expect(res).toEqual({ lessonsViewed: 1 });
   });
 });
-
-
-
-
-

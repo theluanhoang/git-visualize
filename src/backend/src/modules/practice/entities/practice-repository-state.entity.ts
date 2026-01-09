@@ -1,4 +1,12 @@
-import { Column, Entity, Index, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Unique,
+} from 'typeorm';
 import type { IRepositoryState } from '../../git-engine/git-engine.interface';
 import { CommonEntity } from 'src/shared/entities/common.entity';
 
@@ -22,5 +30,3 @@ export class PracticeRepositoryState extends CommonEntity {
   @Column({ nullable: true })
   lastModifiedBy?: string;
 }
-
-

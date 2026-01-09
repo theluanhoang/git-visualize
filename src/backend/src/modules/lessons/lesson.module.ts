@@ -36,6 +36,6 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     GeminiGenerationService,
     LessonGenerationService,
   ],
-  exports: [LessonService, LessonViewService, RatingService, RatingGateway]
+  exports: [LessonService, LessonViewService, RatingService, RatingGateway],
 })
 export class LessonModule {}

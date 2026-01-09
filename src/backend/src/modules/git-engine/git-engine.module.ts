@@ -7,6 +7,6 @@ import { Practice } from '../practice/entities/practice.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([Practice])],
   controllers: [GitEngineController],
-  providers: [GitEngineService]
+  providers: [GitEngineService],
 })
 export class GitEngineModule {}

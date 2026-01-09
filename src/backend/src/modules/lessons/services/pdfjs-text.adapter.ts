@@ -4,7 +4,7 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
   const loadingTask = getDocument({ data: buffer });
   const doc = await loadingTask.promise;
 
-  let allText: string[] = [];
+  const allText: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
@@ -17,5 +17,3 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
 
   return allText.join('\n');
 }
-
-

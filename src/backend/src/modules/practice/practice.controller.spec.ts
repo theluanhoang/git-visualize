@@ -13,19 +13,25 @@ describe('PracticeController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PracticeController],
       providers: [
-        { provide: PracticeAggregateService, useValue: {
-          getPractices: jest.fn(),
-          createPractice: jest.fn(),
-          updatePractice: jest.fn(),
-          deletePractice: jest.fn(),
-          incrementViews: jest.fn(),
-          incrementCompletions: jest.fn(),
-        } },
-        { provide: PracticeRepositoryStateService, useValue: {
-          get: jest.fn(),
-          upsert: jest.fn(),
-          remove: jest.fn(),
-        } },
+        {
+          provide: PracticeAggregateService,
+          useValue: {
+            getPractices: jest.fn(),
+            createPractice: jest.fn(),
+            updatePractice: jest.fn(),
+            deletePractice: jest.fn(),
+            incrementViews: jest.fn(),
+            incrementCompletions: jest.fn(),
+          },
+        },
+        {
+          provide: PracticeRepositoryStateService,
+          useValue: {
+            get: jest.fn(),
+            upsert: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -44,19 +50,26 @@ describe('PracticeController', () => {
     aggService.createPractice.mockResolvedValue({ id: 'p1' } as any);
     expect(await controller.createPractice({} as any)).toEqual({ id: 'p1' });
     aggService.updatePractice.mockResolvedValue({ id: 'p1', name: 'n' } as any);
-    expect(await controller.updatePractice('p1', {} as any)).toEqual({ id: 'p1', name: 'n' });
+    expect(await controller.updatePractice('p1', {} as any)).toEqual({
+      id: 'p1',
+      name: 'n',
+    });
     aggService.deletePractice.mockResolvedValue({ success: true } as any);
     expect(await controller.deletePractice('p1')).toEqual({ success: true });
   });
 
   it('updatePractice propagates not found', async () => {
     aggService.updatePractice.mockRejectedValue(new Error('not found'));
-    await expect(controller.updatePractice('missing', {} as any)).rejects.toThrow('not found');
+    await expect(
+      controller.updatePractice('missing', {} as any),
+    ).rejects.toThrow('not found');
   });
 
   it('deletePractice propagates not found', async () => {
     aggService.deletePractice.mockRejectedValue(new Error('not found'));
-    await expect(controller.deletePractice('missing')).rejects.toThrow('not found');
+    await expect(controller.deletePractice('missing')).rejects.toThrow(
+      'not found',
+    );
   });
 
   it('increment views/completions', async () => {
@@ -72,35 +85,49 @@ describe('PracticeController', () => {
     aggService.incrementViews.mockRejectedValue(new Error('bad id'));
     await expect(controller.incrementViews('bad')).rejects.toThrow('bad id');
     aggService.incrementCompletions.mockRejectedValue(new Error('bad id'));
-    await expect(controller.incrementCompletions('bad')).rejects.toThrow('bad id');
+    await expect(controller.incrementCompletions('bad')).rejects.toThrow(
+      'bad id',
+    );
   });
 
   it('repository state get/upsert/delete', async () => {
     repoStateService.get.mockResolvedValue({ state: {} } as any);
-    const g = await controller.getRepositoryState('p1', { user: { sub: 'u1' } } as any);
+    const g = await controller.getRepositoryState('p1', {
+      user: { sub: 'u1' },
+    } as any);
     expect(g).toEqual({ state: {} });
 
     repoStateService.upsert.mockResolvedValue({ ok: true } as any);
-    const u = await controller.upsertRepositoryState('p1', { version: 1 } as any, { user: { sub: 'u1' } } as any);
+    const u = await controller.upsertRepositoryState(
+      'p1',
+      { version: 1 } as any,
+      { user: { sub: 'u1' } } as any,
+    );
     expect(u).toEqual({ ok: true });
 
     repoStateService.remove.mockResolvedValue(undefined);
-    await controller.deleteRepositoryState('p1', { user: { sub: 'u1' } } as any);
+    await controller.deleteRepositoryState('p1', {
+      user: { sub: 'u1' },
+    } as any);
     expect(repoStateService.remove).toHaveBeenCalledWith('p1', 'u1');
   });
 
   it('repository state upsert/remove error propagation', async () => {
     // Version conflict không còn throw error nữa, chỉ log warning và tiếp tục
-    repoStateService.upsert.mockResolvedValue({ state: {}, version: 10 } as any);
-    const result = await controller.upsertRepositoryState('p1', { version: 9 } as any, { user: { sub: 'u1' } } as any);
+    repoStateService.upsert.mockResolvedValue({
+      state: {},
+      version: 10,
+    } as any);
+    const result = await controller.upsertRepositoryState(
+      'p1',
+      { version: 9 } as any,
+      { user: { sub: 'u1' } } as any,
+    );
     expect(result).toEqual({ state: {}, version: 10 });
 
     repoStateService.remove.mockRejectedValue(new Error('not found'));
-    await expect(controller.deleteRepositoryState('p1', { user: { sub: 'u1' } } as any)).rejects.toThrow('not found');
+    await expect(
+      controller.deleteRepositoryState('p1', { user: { sub: 'u1' } } as any),
+    ).rejects.toThrow('not found');
   });
 });
-
-
-
-
-

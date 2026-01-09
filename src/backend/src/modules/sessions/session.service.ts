@@ -4,8 +4,16 @@ import { Repository, IsNull, MoreThan } from 'typeorm';
 import { Session } from './session.entity';
 import { SessionType } from './session.interface';
 import { DeviceTrackingService } from '../auth/device-tracking.service';
-import { ActiveSessionsResponseDto, OAuthSessionsResponseDto } from './dto/session-response.dto';
-import { DeviceInfoResponseDto, DeviceInfoDto, LocationInfoDto, DeviceType } from '../auth/dto/device-info.dto';
+import {
+  ActiveSessionsResponseDto,
+  OAuthSessionsResponseDto,
+} from './dto/session-response.dto';
+import {
+  DeviceInfoResponseDto,
+  DeviceInfoDto,
+  LocationInfoDto,
+  DeviceType,
+} from '../auth/dto/device-info.dto';
 import * as argon2 from 'argon2';
 import { OAuthProviderType } from '../users/oauth.interface';
 
@@ -49,16 +57,22 @@ export class SessionService {
 
   async findActiveSessions(userId: string): Promise<Session[]> {
     return this.sessionRepository.find({
-      where: { userId, revokedAt: IsNull() }
+      where: { userId, revokedAt: IsNull() },
     });
   }
 
-  async findSessionByRefreshToken(userId: string, refreshToken: string): Promise<Session | null> {
+  async findSessionByRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<Session | null> {
     const activeSessions = await this.findActiveSessions(userId);
-    
+
     for (const session of activeSessions) {
       try {
-        const isValid = await argon2.verify(session.refreshTokenHash, refreshToken);
+        const isValid = await argon2.verify(
+          session.refreshTokenHash,
+          refreshToken,
+        );
         if (isValid) {
           return session;
         }
@@ -66,11 +80,14 @@ export class SessionService {
         continue;
       }
     }
-    
+
     return null;
   }
 
-  async revokeSessionByRefreshToken(userId: string, refreshToken: string): Promise<boolean> {
+  async revokeSessionByRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<boolean> {
     const session = await this.findSessionByRefreshToken(userId, refreshToken);
     if (!session) {
       return false;
@@ -84,19 +101,21 @@ export class SessionService {
   async revokeAllSessionsForUser(userId: string): Promise<void> {
     await this.sessionRepository.update(
       { userId, revokedAt: IsNull() },
-      { revokedAt: new Date() }
+      { revokedAt: new Date() },
     );
   }
 
-  async getActiveSessionsWithDetails(userId: string): Promise<ActiveSessionsResponseDto> {
+  async getActiveSessionsWithDetails(
+    userId: string,
+  ): Promise<ActiveSessionsResponseDto> {
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
 
     const sessions = await this.getActiveSessionsForUser(userId);
-    
+
     return {
-      sessions: sessions.map(session => ({
+      sessions: sessions.map((session) => ({
         id: session.id,
         sessionType: session.sessionType,
         oauthProvider: session.oauthProvider,
@@ -110,15 +129,17 @@ export class SessionService {
     };
   }
 
-  async getOAuthSessionsWithDetails(userId: string): Promise<OAuthSessionsResponseDto> {
+  async getOAuthSessionsWithDetails(
+    userId: string,
+  ): Promise<OAuthSessionsResponseDto> {
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
 
     const sessions = await this.getOAuthSessionsForUser(userId);
-    
+
     return {
-      sessions: sessions.map(session => ({
+      sessions: sessions.map((session) => ({
         id: session.id,
         sessionType: session.sessionType,
         oauthProvider: session.oauthProvider,
@@ -134,14 +155,19 @@ export class SessionService {
     };
   }
 
-  async getDeviceInfo(userAgent?: string, ip?: string): Promise<DeviceInfoResponseDto> {
+  async getDeviceInfo(
+    userAgent?: string,
+    ip?: string,
+  ): Promise<DeviceInfoResponseDto> {
     if (!userAgent) {
       return { error: 'User-Agent not available' };
     }
 
     const deviceInfo = this.deviceTrackingService.parseUserAgent(userAgent);
-    const locationInfo = await this.deviceTrackingService.getLocationFromIP(ip || '');
-    
+    const locationInfo = await this.deviceTrackingService.getLocationFromIP(
+      ip || '',
+    );
+
     const deviceDto: DeviceInfoDto = {
       browser: deviceInfo.browser,
       browserVersion: deviceInfo.browserVersion,
@@ -150,7 +176,7 @@ export class SessionService {
       deviceType: deviceInfo.deviceType as DeviceType,
       isBot: deviceInfo.isBot,
     };
-    
+
     const locationDto: LocationInfoDto = {
       country: locationInfo.country,
       city: locationInfo.city,
@@ -158,7 +184,7 @@ export class SessionService {
       timezone: locationInfo.timezone,
       isp: locationInfo.isp,
     };
-    
+
     return {
       device: deviceDto,
       location: locationDto,
@@ -169,76 +195,76 @@ export class SessionService {
 
   async getActiveSessionsForUser(userId: string) {
     return this.sessionRepository.find({
-      where: { 
+      where: {
         userId,
         revokedAt: IsNull(),
-        expiresAt: MoreThan(new Date())
+        expiresAt: MoreThan(new Date()),
       },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 
   async getOAuthSessionsForUser(userId: string) {
     return this.sessionRepository.find({
-      where: { 
+      where: {
         userId,
         sessionType: SessionType.OAUTH,
         revokedAt: IsNull(),
-        expiresAt: MoreThan(new Date())
+        expiresAt: MoreThan(new Date()),
       },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 
   async getSessionById(sessionId: string) {
     return this.sessionRepository.findOne({
-      where: { id: sessionId }
+      where: { id: sessionId },
     });
   }
 
   async revokeSession(sessionId: string) {
     return this.sessionRepository.update(sessionId, {
-      revokedAt: new Date()
+      revokedAt: new Date(),
     });
   }
 
   async getSessionsByOAuthProvider(userId: string, provider: string) {
     return this.sessionRepository.find({
-      where: { 
+      where: {
         userId,
         oauthProvider: provider as OAuthProviderType,
         revokedAt: IsNull(),
-        expiresAt: MoreThan(new Date())
+        expiresAt: MoreThan(new Date()),
       },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 
   async getSessionStats(userId: string) {
     const [total, active, oauth, password] = await Promise.all([
       this.sessionRepository.count({ where: { userId } }),
-      this.sessionRepository.count({ 
-        where: { 
-          userId, 
-          revokedAt: IsNull(), 
-          expiresAt: MoreThan(new Date()) 
-        } 
+      this.sessionRepository.count({
+        where: {
+          userId,
+          revokedAt: IsNull(),
+          expiresAt: MoreThan(new Date()),
+        },
       }),
-      this.sessionRepository.count({ 
-        where: { 
-          userId, 
+      this.sessionRepository.count({
+        where: {
+          userId,
           sessionType: SessionType.OAUTH,
-          revokedAt: IsNull(), 
-          expiresAt: MoreThan(new Date()) 
-        } 
+          revokedAt: IsNull(),
+          expiresAt: MoreThan(new Date()),
+        },
       }),
-      this.sessionRepository.count({ 
-        where: { 
-          userId, 
+      this.sessionRepository.count({
+        where: {
+          userId,
           sessionType: SessionType.PASSWORD,
-          revokedAt: IsNull(), 
-          expiresAt: MoreThan(new Date()) 
-        } 
+          revokedAt: IsNull(),
+          expiresAt: MoreThan(new Date()),
+        },
       }),
     ]);
 
@@ -262,17 +288,22 @@ export class SessionService {
     return row?.createdAt ?? null;
   }
 
-  async getAllSessionsForAnalytics(): Promise<Array<{ createdAt: Date; expiresAt: Date; revokedAt: Date | null }>> {
+  async getAllSessionsForAnalytics(): Promise<
+    Array<{ createdAt: Date; expiresAt: Date; revokedAt: Date | null }>
+  > {
     return this.sessionRepository.find({
       select: ['createdAt', 'expiresAt', 'revokedAt'],
     });
   }
 
-  async getHourlyActivityAggregate(date?: string): Promise<Array<{ hour: string; users: number }>> {
+  async getHourlyActivityAggregate(
+    date?: string,
+  ): Promise<Array<{ hour: string; users: number }>> {
     const filter = date ? `WHERE DATE("createdAt") = $1` : '';
     const params = date ? [date] : [];
-    const rows: Array<{ hour: string; users: number }> = await this.sessionRepository.query(
-      `WITH hours AS (
+    const rows: Array<{ hour: string; users: number }> =
+      await this.sessionRepository.query(
+        `WITH hours AS (
          SELECT generate_series(0,23) AS h
        ), stats AS (
          SELECT EXTRACT(HOUR FROM "createdAt")::int AS h, COUNT(*) AS cnt
@@ -285,20 +316,26 @@ export class SessionService {
        FROM hours
        LEFT JOIN stats ON stats.h = hours.h
        ORDER BY hours.h;`,
-      params
-    );
+        params,
+      );
     return rows;
   }
 
-  async getDeviceUsageAggregate(): Promise<{ desktop: number; mobile: number; tablet: number; bot: number; unknown: number }> {
+  async getDeviceUsageAggregate(): Promise<{
+    desktop: number;
+    mobile: number;
+    tablet: number;
+    bot: number;
+    unknown: number;
+  }> {
     const row: any = await this.sessionRepository
       .createQueryBuilder('s')
       .select([
-        "COUNT(DISTINCT CASE WHEN (LOWER(s.\"user_agent\") LIKE '%bot%' OR LOWER(s.\"user_agent\") LIKE '%crawl%' OR LOWER(s.\"user_agent\") LIKE '%spider%') THEN s.\"userId\" END) AS bot",
-        "COUNT(DISTINCT CASE WHEN (LOWER(s.\"user_agent\") LIKE '%tablet%' OR LOWER(s.\"user_agent\") LIKE '%ipad%') THEN s.\"userId\" END) AS tablet",
-        "COUNT(DISTINCT CASE WHEN (LOWER(s.\"user_agent\") LIKE '%mobile%' OR LOWER(s.\"user_agent\") LIKE '%android%' OR LOWER(s.\"user_agent\") LIKE '%iphone%') AND NOT (LOWER(s.\"user_agent\") LIKE '%tablet%' OR LOWER(s.\"user_agent\") LIKE '%ipad%') THEN s.\"userId\" END) AS mobile",
-        "COUNT(DISTINCT CASE WHEN s.\"user_agent\" IS NOT NULL AND LENGTH(TRIM(s.\"user_agent\")) > 0 AND NOT (LOWER(s.\"user_agent\") LIKE '%bot%' OR LOWER(s.\"user_agent\") LIKE '%crawl%' OR LOWER(s.\"user_agent\") LIKE '%spider%' OR LOWER(s.\"user_agent\") LIKE '%mobile%' OR LOWER(s.\"user_agent\") LIKE '%android%' OR LOWER(s.\"user_agent\") LIKE '%iphone%' OR LOWER(s.\"user_agent\") LIKE '%tablet%' OR LOWER(s.\"user_agent\") LIKE '%ipad%') THEN s.\"userId\" END) AS desktop",
-        "COUNT(DISTINCT CASE WHEN (s.\"user_agent\" IS NULL OR LENGTH(TRIM(s.\"user_agent\")) = 0) THEN s.\"userId\" END) AS unknown",
+        'COUNT(DISTINCT CASE WHEN (LOWER(s."user_agent") LIKE \'%bot%\' OR LOWER(s."user_agent") LIKE \'%crawl%\' OR LOWER(s."user_agent") LIKE \'%spider%\') THEN s."userId" END) AS bot',
+        'COUNT(DISTINCT CASE WHEN (LOWER(s."user_agent") LIKE \'%tablet%\' OR LOWER(s."user_agent") LIKE \'%ipad%\') THEN s."userId" END) AS tablet',
+        'COUNT(DISTINCT CASE WHEN (LOWER(s."user_agent") LIKE \'%mobile%\' OR LOWER(s."user_agent") LIKE \'%android%\' OR LOWER(s."user_agent") LIKE \'%iphone%\') AND NOT (LOWER(s."user_agent") LIKE \'%tablet%\' OR LOWER(s."user_agent") LIKE \'%ipad%\') THEN s."userId" END) AS mobile',
+        'COUNT(DISTINCT CASE WHEN s."user_agent" IS NOT NULL AND LENGTH(TRIM(s."user_agent")) > 0 AND NOT (LOWER(s."user_agent") LIKE \'%bot%\' OR LOWER(s."user_agent") LIKE \'%crawl%\' OR LOWER(s."user_agent") LIKE \'%spider%\' OR LOWER(s."user_agent") LIKE \'%mobile%\' OR LOWER(s."user_agent") LIKE \'%android%\' OR LOWER(s."user_agent") LIKE \'%iphone%\' OR LOWER(s."user_agent") LIKE \'%tablet%\' OR LOWER(s."user_agent") LIKE \'%ipad%\') THEN s."userId" END) AS desktop',
+        'COUNT(DISTINCT CASE WHEN (s."user_agent" IS NULL OR LENGTH(TRIM(s."user_agent")) = 0) THEN s."userId" END) AS unknown',
       ])
       .where('1=1')
       .getRawOne();

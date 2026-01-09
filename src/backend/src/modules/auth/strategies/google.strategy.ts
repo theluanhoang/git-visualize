@@ -12,7 +12,7 @@ export class GoogleOAuthStrategy extends PassportStrategy(Strategy, 'google') {
     const clientId = configService.get<string>('oauth.google.clientId');
     const clientSecret = configService.get<string>('oauth.google.clientSecret');
     const callbackURL = configService.get<string>('oauth.google.callbackUrl');
-    
+
     if (!clientId || !clientSecret || !callbackURL) {
       super({
         clientID: 'dummy',
@@ -22,7 +22,7 @@ export class GoogleOAuthStrategy extends PassportStrategy(Strategy, 'google') {
       });
       return;
     }
-    
+
     super({
       clientID: clientId,
       clientSecret: clientSecret,
@@ -40,12 +40,13 @@ export class GoogleOAuthStrategy extends PassportStrategy(Strategy, 'google') {
     done: VerifyCallback,
   ): Promise<void> {
     const { name, emails, photos } = profile;
-    
+
     const userInfo: OAuthUserInfoDto = {
-      email: emails?.[0]?.value, 
-      name: name?.givenName && name?.familyName 
-        ? `${name.givenName} ${name.familyName}` 
-        : name?.displayName || profile.id,
+      email: emails?.[0]?.value,
+      name:
+        name?.givenName && name?.familyName
+          ? `${name.givenName} ${name.familyName}`
+          : name?.displayName || profile.id,
       avatar: photos?.[0]?.value,
       providerId: profile.id,
       provider: OAuthProviderType.GOOGLE,

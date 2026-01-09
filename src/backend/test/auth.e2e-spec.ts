@@ -11,9 +11,13 @@ describe('Auth E2E', () => {
   let accessToken: string;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
     server = app.getHttpServer();
   });
@@ -23,7 +27,10 @@ describe('Auth E2E', () => {
   });
 
   it('POST /auth/register creates user', async () => {
-    const res = await request(server).post('/auth/register').send({ email, password }).expect(201);
+    const res = await request(server)
+      .post('/auth/register')
+      .send({ email, password })
+      .expect(201);
     expect(res.body).toHaveProperty('id');
     expect(res.body).toHaveProperty('email', email);
   });
@@ -40,9 +47,10 @@ describe('Auth E2E', () => {
   });
 
   it('GET /auth/me returns current user', async () => {
-    const res = await request(server).get('/auth/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
+    const res = await request(server)
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
     expect(res.body).toHaveProperty('email', email);
   });
 });
-
-

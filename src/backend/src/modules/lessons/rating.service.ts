@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rating } from './rating.entity';
@@ -12,13 +16,19 @@ export class RatingService {
     private readonly ratingRepository: Repository<Rating>,
   ) {}
 
-  async createRating(userId: string, lessonId: string, dto: CreateRatingDto): Promise<Rating> {
+  async createRating(
+    userId: string,
+    lessonId: string,
+    dto: CreateRatingDto,
+  ): Promise<Rating> {
     const existingRating = await this.ratingRepository.findOne({
       where: { userId, lessonId },
     });
 
     if (existingRating) {
-      throw new ConflictException('User has already rated this lesson. Use update instead.');
+      throw new ConflictException(
+        'User has already rated this lesson. Use update instead.',
+      );
     }
 
     const rating = this.ratingRepository.create({
@@ -31,7 +41,11 @@ export class RatingService {
     return this.ratingRepository.save(rating);
   }
 
-  async updateRating(userId: string, lessonId: string, dto: UpdateRatingDto): Promise<Rating> {
+  async updateRating(
+    userId: string,
+    lessonId: string,
+    dto: UpdateRatingDto,
+  ): Promise<Rating> {
     const rating = await this.ratingRepository.findOne({
       where: { userId, lessonId },
     });
@@ -55,7 +69,10 @@ export class RatingService {
     }
   }
 
-  async getUserRating(userId: string, lessonId: string): Promise<Rating | null> {
+  async getUserRating(
+    userId: string,
+    lessonId: string,
+  ): Promise<Rating | null> {
     return this.ratingRepository.findOne({
       where: { userId, lessonId },
       relations: ['user'],
@@ -133,7 +150,7 @@ export class RatingService {
       .select('DISTINCT rating.userId', 'userId')
       .getRawMany<{ userId: string }>();
 
-    return result.map(r => r.userId);
+    return result.map((r) => r.userId);
   }
 
   async getPositiveRatersCount(): Promise<number> {
@@ -153,10 +170,12 @@ export class RatingService {
       .where('rating.rating >= :minRating', { minRating: 4 })
       .getRawMany<{ userId: string }>();
 
-    return result.map(r => r.userId);
+    return result.map((r) => r.userId);
   }
 
-  async getRatingsForLessons(lessonIds: string[]): Promise<Record<string, number>> {
+  async getRatingsForLessons(
+    lessonIds: string[],
+  ): Promise<Record<string, number>> {
     if (lessonIds.length === 0) {
       return {};
     }
@@ -177,4 +196,3 @@ export class RatingService {
     return ratingsMap;
   }
 }
-

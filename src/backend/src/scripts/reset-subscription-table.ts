@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function resetSubscriptionTable() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -26,7 +26,7 @@ async function resetSubscriptionTable() {
 
     console.log('✅ Subscription table reset successfully!');
     console.log('💡 Now run: yarn run migration:run');
-    
+
     await dataSource.destroy();
     process.exit(0);
   } catch (error) {
@@ -39,16 +39,3 @@ async function resetSubscriptionTable() {
 }
 
 void resetSubscriptionTable();
-
-
-
-
-
-
-
-
-
-
-
-
-

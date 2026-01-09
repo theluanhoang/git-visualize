@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
-import { useMySubscription, useCreateSubscription } from '@/hooks/use-subscription';
+import { useMySubscription } from '@/hooks/use-subscription';
+import { useCreateSubscriptionWithPayment } from '@/hooks/use-payment';
 import { useProAccess } from '@/hooks/use-pro-access';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +15,8 @@ import { CheckCircle2, Crown, Loader2, BookOpen, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import type { SubscriptionPlanType } from '@/services/subscription';
+import { PaymentQRModal } from '@/components/subscription/PaymentQRModal';
+import type { Payment } from '@/services/payment';
 
 const PRICING = {
   MONTHLY: 99000,
@@ -22,11 +26,14 @@ const PRICING = {
 export default function SubscriptionPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: subscription, isLoading: isLoadingSubscription } = useMySubscription();
   const { isPro, subscription: proSubscription } = useProAccess();
-  const createSubscription = useCreateSubscription();
+  const createSubscriptionWithPayment = useCreateSubscriptionWithPayment();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanType>('MONTHLY');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const handleSubscribe = async () => {
     if (!user) {
@@ -41,23 +48,32 @@ export default function SubscriptionPage() {
 
     setIsProcessing(true);
     try {
-      // Create subscription - will automatically activate and upgrade to Pro
-      await createSubscription.mutateAsync({
+      // Tạo subscription và payment cùng lúc
+      const paymentData = await createSubscriptionWithPayment.mutateAsync({
         planType: selectedPlan,
         autoRenew: true,
       });
 
-      toast.success('🎉 Nâng cấp lên Pro thành công! Bạn có thể tạo và quản lý bài học của mình ngay bây giờ.');
-      
-      // Refresh subscription data
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Hiển thị modal thanh toán với QR code
+      setPayment(paymentData);
+      setShowPaymentModal(true);
+      toast.success('Vui lòng thanh toán để hoàn tất nâng cấp');
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Có lỗi xảy ra khi đăng ký');
+      toast.error(error?.response?.data?.message || 'Có lỗi xảy ra khi tạo thanh toán');
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    // Invalidate và refetch subscription data
+    queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    queryClient.invalidateQueries({ queryKey: ['payments'] });
+    
+    // Refresh sau 1 giây để đảm bảo data được cập nhật
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   if (isLoadingSubscription) {
@@ -291,15 +307,23 @@ export default function SubscriptionPage() {
               ) : (
                 <>
                   <Crown className="mr-2 h-4 w-4" />
-                  Đăng ký Pro ngay
+                  Nâng cấp Pro ngay
                 </>
               )}
             </Button>
             <p className="text-sm text-muted-foreground mt-4">
-              Tài khoản Pro sẽ được kích hoạt ngay sau khi đăng ký
+              Tài khoản Pro sẽ được kích hoạt sau khi thanh toán thành công
             </p>
           </div>
         )}
+
+        {/* Payment QR Modal */}
+        <PaymentQRModal
+          payment={payment}
+          open={showPaymentModal}
+          onOpenChange={setShowPaymentModal}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
       </div>
     </PrivateRoute>
   );

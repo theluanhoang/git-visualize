@@ -1,4 +1,11 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex, TableUnique, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableIndex,
+  TableUnique,
+  TableForeignKey,
+} from 'typeorm';
 
 export class CreateRatingTable1700000000005 implements MigrationInterface {
   name = 'CreateRatingTable1700000000005';
@@ -107,12 +114,11 @@ export class CreateRatingTable1700000000005 implements MigrationInterface {
     await queryRunner.dropIndex('rating', 'IDX_rating_rating');
     await queryRunner.dropIndex('rating', 'IDX_rating_lesson_id');
     await queryRunner.dropIndex('rating', 'IDX_rating_user_id');
-    
+
     // Drop unique constraint
     await queryRunner.dropUniqueConstraint('rating', 'UQ_rating_user_lesson');
-    
+
     // Drop table
     await queryRunner.dropTable('rating');
   }
 }
-

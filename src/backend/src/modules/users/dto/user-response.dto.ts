@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsEnum, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+  IsDateString,
+} from 'class-validator';
 import { EUserRole } from '../user.interface';
 
 export class UserResponseDto {

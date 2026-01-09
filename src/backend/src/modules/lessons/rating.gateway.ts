@@ -51,7 +51,7 @@ const getAllowedOrigins = (): string[] => {
     methods: ['GET', 'POST'],
   },
   namespace: '/ratings',
-  maxHttpBufferSize: 1e6, 
+  maxHttpBufferSize: 1e6,
   pingTimeout: 60000,
   pingInterval: 25000,
   perMessageDeflate: false,
@@ -70,9 +70,12 @@ export class RatingGateway
     private readonly configService: ConfigService,
     private readonly rateLimitService: SocketRateLimitService,
   ) {
-    this.cleanupInterval = setInterval(() => {
-      this.rateLimitService.cleanup();
-    }, 15 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.rateLimitService.cleanup();
+      },
+      15 * 60 * 1000,
+    );
   }
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -197,10 +200,7 @@ export class RatingGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: SubscribeLessonDto,
   ) {
-    const canSend = this.rateLimitService.canSendMessage(
-      client,
-      client.userId,
-    );
+    const canSend = this.rateLimitService.canSendMessage(client, client.userId);
     if (!canSend.allowed) {
       throw new WsException(canSend.reason || 'Rate limit exceeded');
     }
@@ -253,10 +253,7 @@ export class RatingGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: UnsubscribeLessonDto,
   ) {
-    const canSend = this.rateLimitService.canSendMessage(
-      client,
-      client.userId,
-    );
+    const canSend = this.rateLimitService.canSendMessage(client, client.userId);
     if (!canSend.allowed) {
       throw new WsException(canSend.reason || 'Rate limit exceeded');
     }
@@ -293,31 +290,38 @@ export class RatingGateway
   }
 
   emitRatingCreated(lessonId: string, rating: any) {
-    this.server.to(`lesson:${lessonId}`).emit(SocketEvents.SERVER_TO_CLIENT.RATING_CREATED, {
-      lessonId,
-      rating,
-    });
+    this.server
+      .to(`lesson:${lessonId}`)
+      .emit(SocketEvents.SERVER_TO_CLIENT.RATING_CREATED, {
+        lessonId,
+        rating,
+      });
   }
 
   emitRatingUpdated(lessonId: string, rating: any) {
-    this.server.to(`lesson:${lessonId}`).emit(SocketEvents.SERVER_TO_CLIENT.RATING_UPDATED, {
-      lessonId,
-      rating,
-    });
+    this.server
+      .to(`lesson:${lessonId}`)
+      .emit(SocketEvents.SERVER_TO_CLIENT.RATING_UPDATED, {
+        lessonId,
+        rating,
+      });
   }
 
   emitRatingDeleted(lessonId: string, userId: string) {
-    this.server.to(`lesson:${lessonId}`).emit(SocketEvents.SERVER_TO_CLIENT.RATING_DELETED, {
-      lessonId,
-      userId,
-    });
+    this.server
+      .to(`lesson:${lessonId}`)
+      .emit(SocketEvents.SERVER_TO_CLIENT.RATING_DELETED, {
+        lessonId,
+        userId,
+      });
   }
 
   emitStatsUpdated(lessonId: string, stats: any) {
-    this.server.to(`lesson:${lessonId}`).emit(SocketEvents.SERVER_TO_CLIENT.STATS_UPDATED, {
-      lessonId,
-      stats,
-    });
+    this.server
+      .to(`lesson:${lessonId}`)
+      .emit(SocketEvents.SERVER_TO_CLIENT.STATS_UPDATED, {
+        lessonId,
+        stats,
+      });
   }
 }
-

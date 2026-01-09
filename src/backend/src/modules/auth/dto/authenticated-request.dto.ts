@@ -25,7 +25,10 @@ export class AuthenticatedUserDto {
 }
 
 export class AuthenticatedRequestDto {
-  @ApiProperty({ description: 'Authenticated user information', type: AuthenticatedUserDto })
+  @ApiProperty({
+    description: 'Authenticated user information',
+    type: AuthenticatedUserDto,
+  })
   user: AuthenticatedUserDto;
 
   @ApiProperty({ description: 'Get header value', required: false })

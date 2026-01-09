@@ -43,4 +43,4 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
   controllers: [],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

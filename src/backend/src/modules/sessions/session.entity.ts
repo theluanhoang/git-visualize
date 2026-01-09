@@ -29,15 +29,20 @@ export class Session extends CommonEntity {
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt: Date | null;
 
-  @Column({ 
-    name: 'session_type', 
-    type: 'enum', 
-    enum: SessionType, 
-    default: SessionType.PASSWORD 
+  @Column({
+    name: 'session_type',
+    type: 'enum',
+    enum: SessionType,
+    default: SessionType.PASSWORD,
   })
   sessionType: SessionType;
 
-  @Column({ name: 'oauth_provider', type: 'enum', enum: OAuthProviderType, nullable: true })
+  @Column({
+    name: 'oauth_provider',
+    type: 'enum',
+    enum: OAuthProviderType,
+    nullable: true,
+  })
   oauthProvider?: OAuthProviderType;
 
   @Column({ name: 'oauth_provider_id', nullable: true })
@@ -49,8 +54,10 @@ export class Session extends CommonEntity {
   @Column({ name: 'oauth_refresh_token_hash', nullable: true })
   oauthRefreshTokenHash?: string;
 
-  @Column({ name: 'oauth_token_expires_at', type: 'timestamptz', nullable: true })
+  @Column({
+    name: 'oauth_token_expires_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
   oauthTokenExpiresAt?: Date;
 }
-
-

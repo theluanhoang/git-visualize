@@ -10,8 +10,8 @@ import { PracticeModule } from '../practice/practice.module';
 
 @Module({
   imports: [
-    forwardRef(() => UserModule), 
-    MailModule, 
+    forwardRef(() => UserModule),
+    MailModule,
     LessonModule,
     SessionModule,
     PracticeModule,
@@ -21,5 +21,3 @@ import { PracticeModule } from '../practice/practice.module';
   exports: [AdminService],
 })
 export class AdminModule {}
-
-

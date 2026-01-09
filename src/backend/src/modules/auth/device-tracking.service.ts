@@ -23,11 +23,11 @@ export class DeviceTrackingService {
 
   parseUserAgent(userAgent: string): DeviceInfo {
     const ua = userAgent.toLowerCase();
-    
+
     // Browser detection
     let browser = 'Unknown';
     let browserVersion = 'Unknown';
-    
+
     if (ua.includes('chrome') && !ua.includes('edg')) {
       browser = 'Chrome';
       const match = ua.match(/chrome\/(\d+\.\d+)/);
@@ -49,7 +49,7 @@ export class DeviceTrackingService {
     // OS detection
     let os = 'Unknown';
     let osVersion = 'Unknown';
-    
+
     if (ua.includes('windows')) {
       os = 'Windows';
       if (ua.includes('windows nt 10.0')) osVersion = '10';
@@ -74,14 +74,19 @@ export class DeviceTrackingService {
 
     // Device type detection
     let deviceType: 'desktop' | 'mobile' | 'tablet' = 'desktop';
-    if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+    if (
+      ua.includes('mobile') ||
+      ua.includes('android') ||
+      ua.includes('iphone')
+    ) {
       deviceType = 'mobile';
     } else if (ua.includes('ipad') || ua.includes('tablet')) {
       deviceType = 'tablet';
     }
 
     // Bot detection
-    const isBot = ua.includes('bot') || ua.includes('crawler') || ua.includes('spider');
+    const isBot =
+      ua.includes('bot') || ua.includes('crawler') || ua.includes('spider');
 
     return {
       browser,
@@ -99,7 +104,7 @@ export class DeviceTrackingService {
     // - ipinfo.io
     // - MaxMind GeoIP2
     // - CloudFlare CF-IPCountry header
-    
+
     // For now, return basic info
     return {
       country: 'Unknown',
@@ -110,14 +115,18 @@ export class DeviceTrackingService {
     };
   }
 
-  async updateSessionWithDeviceInfo(sessionId: string, userAgent: string, ip: string) {
+  async updateSessionWithDeviceInfo(
+    sessionId: string,
+    userAgent: string,
+    ip: string,
+  ) {
     const deviceInfo = this.parseUserAgent(userAgent);
     const locationInfo = await this.getLocationFromIP(ip);
-    
+
     // Log device info for debugging
     console.log('Device Info:', deviceInfo);
     console.log('Location Info:', locationInfo);
-    
+
     // Return device info for external use
     return {
       deviceInfo,

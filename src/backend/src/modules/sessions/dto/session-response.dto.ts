@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsDateString, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+} from 'class-validator';
 import { OAuthProviderType } from '../../users/oauth.interface';
 import { SessionType } from '../session.interface';
 
@@ -12,7 +18,11 @@ export class SessionDetailsDto {
   @IsEnum(SessionType)
   sessionType: SessionType;
 
-  @ApiProperty({ description: 'OAuth provider', enum: OAuthProviderType, required: false })
+  @ApiProperty({
+    description: 'OAuth provider',
+    enum: OAuthProviderType,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(OAuthProviderType)
   oauthProvider?: OAuthProviderType;
@@ -51,7 +61,10 @@ export class SessionDetailsDto {
 }
 
 export class ActiveSessionsResponseDto {
-  @ApiProperty({ description: 'List of active sessions', type: [SessionDetailsDto] })
+  @ApiProperty({
+    description: 'List of active sessions',
+    type: [SessionDetailsDto],
+  })
   sessions: SessionDetailsDto[];
 
   @ApiProperty({ description: 'Total number of sessions' })
@@ -59,7 +72,10 @@ export class ActiveSessionsResponseDto {
 }
 
 export class OAuthSessionsResponseDto {
-  @ApiProperty({ description: 'List of OAuth sessions', type: [SessionDetailsDto] })
+  @ApiProperty({
+    description: 'List of OAuth sessions',
+    type: [SessionDetailsDto],
+  })
   sessions: SessionDetailsDto[];
 
   @ApiProperty({ description: 'Total number of OAuth sessions' })

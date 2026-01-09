@@ -59,4 +59,3 @@ export class LessonRatingStatsDto {
     5: number;
   };
 }
-
