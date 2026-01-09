@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 
 class AuthorDto {
   @ApiProperty()
@@ -24,7 +31,7 @@ class CommitDto {
   @IsString()
   id!: string;
 
-  @ApiProperty({ enum: ['BLOB','TREE','COMMIT'] })
+  @ApiProperty({ enum: ['BLOB', 'TREE', 'COMMIT'] })
   @IsString()
   type!: 'BLOB' | 'TREE' | 'COMMIT';
 
@@ -122,5 +129,3 @@ export class RepositoryStateDto {
   @Type(() => HeadDto)
   head?: HeadDto | null;
 }
-
-

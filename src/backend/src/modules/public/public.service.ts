@@ -35,5 +35,3 @@ export class PublicService {
     return { totalLessons, totalViews, totalPractices, totalUsers };
   }
 }
-
-

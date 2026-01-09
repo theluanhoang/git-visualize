@@ -2,6 +2,8 @@ export const SocketEvents = {
   CLIENT_TO_SERVER: {
     SUBSCRIBE_LESSON: 'subscribe-lesson',
     UNSUBSCRIBE_LESSON: 'unsubscribe-lesson',
+    SUBSCRIBE_PAYMENT: 'subscribe-payment',
+    UNSUBSCRIBE_PAYMENT: 'unsubscribe-payment',
   },
   SERVER_TO_CLIENT: {
     ERROR: 'error',
@@ -12,6 +14,8 @@ export const SocketEvents = {
     RATING_UPDATED: 'rating:updated',
     RATING_DELETED: 'rating:deleted',
     STATS_UPDATED: 'stats:updated',
+    PAYMENT_COMPLETED: 'payment:completed',
+    PAYMENT_STATUS_UPDATED: 'payment:status-updated',
   },
 } as const;
 

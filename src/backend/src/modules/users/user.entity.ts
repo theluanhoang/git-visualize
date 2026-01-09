@@ -4,9 +4,9 @@ import { OAuthProvider } from './oauth-provider.entity';
 import { EUserRole } from './user.interface';
 
 export enum EUserSubscriptionStatus {
-    FREE = 'FREE',
-    PRO = 'PRO',
-    EXPIRED = 'EXPIRED',
+  FREE = 'FREE',
+  PRO = 'PRO',
+  EXPIRED = 'EXPIRED',
 }
 
 @Entity('user')
@@ -17,10 +17,10 @@ export class User extends CommonEntity {
   @Column({ name: 'password_hash', nullable: true })
   passwordHash?: string;
 
-  @Column({ 
-    type: 'enum', 
-    enum: EUserRole, 
-    default: EUserRole.USER 
+  @Column({
+    type: 'enum',
+    enum: EUserRole,
+    default: EUserRole.USER,
   })
   role: EUserRole;
 
@@ -50,5 +50,3 @@ export class User extends CommonEntity {
   @OneToMany(() => OAuthProvider, (provider) => provider.user)
   oauthProviders: OAuthProvider[];
 }
-
-

@@ -13,15 +13,22 @@ export default async function globalTeardown() {
   const password = process.env.DB_PASSWORD ?? 'admin';
   const adminDb = process.env.PG_DATABASE_ADMIN ?? 'postgres';
 
-  const adminClient = new Client({ host, port, user, password, database: adminDb });
+  const adminClient = new Client({
+    host,
+    port,
+    user,
+    password,
+    database: adminDb,
+  });
   await adminClient.connect();
   try {
-    await adminClient.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1`, [dbName]);
+    await adminClient.query(
+      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1`,
+      [dbName],
+    );
     await adminClient.query(`DROP DATABASE IF EXISTS "${dbName}"`);
   } finally {
     await adminClient.end();
     unlinkSync(stampPath);
   }
 }
-
-

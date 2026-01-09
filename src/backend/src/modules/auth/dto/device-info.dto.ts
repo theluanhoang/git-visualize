@@ -61,11 +61,19 @@ export class LocationInfoDto {
 }
 
 export class DeviceInfoResponseDto {
-  @ApiProperty({ description: 'Device information', type: DeviceInfoDto, required: false })
+  @ApiProperty({
+    description: 'Device information',
+    type: DeviceInfoDto,
+    required: false,
+  })
   @IsOptional()
   device?: DeviceInfoDto;
 
-  @ApiProperty({ description: 'Location information', type: LocationInfoDto, required: false })
+  @ApiProperty({
+    description: 'Location information',
+    type: LocationInfoDto,
+    required: false,
+  })
   @IsOptional()
   location?: LocationInfoDto;
 

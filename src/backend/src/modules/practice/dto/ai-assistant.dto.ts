@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID, ValidateNested, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  ValidateNested,
+  IsObject,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RepositoryStateDto } from './repository-state.dto';
 
@@ -76,26 +82,32 @@ export class AiAssistantRequestBodyDto {
 
 export class AiAssistantResponseDto {
   @ApiProperty({
-    description: 'Phân tích tình huống - Repository hiện tại đang ở đâu? Người học vừa làm gì?',
-    example: 'Repository của bạn hiện đang ở trên branch main với 2 commits. Bạn vừa thử commit nhưng gặp lỗi.',
+    description:
+      'Phân tích tình huống - Repository hiện tại đang ở đâu? Người học vừa làm gì?',
+    example:
+      'Repository của bạn hiện đang ở trên branch main với 2 commits. Bạn vừa thử commit nhưng gặp lỗi.',
   })
   situationAnalysis!: string;
 
   @ApiProperty({
     description: 'Vấn đề - Sai ở điểm nào? Vì sao cần sửa?',
-    example: 'Lỗi xảy ra vì bạn chưa thêm file vào staging area trước khi commit. Git yêu cầu phải có ít nhất một file được staged.',
+    example:
+      'Lỗi xảy ra vì bạn chưa thêm file vào staging area trước khi commit. Git yêu cầu phải có ít nhất một file được staged.',
   })
   problem!: string;
 
   @ApiProperty({
-    description: 'Kiến thức Git liên quan - Giải thích ngắn gọn, đúng trọng tâm',
-    example: 'Git commit chỉ có thể thực hiện khi có ít nhất một file trong staging area. Staging area là nơi Git lưu các thay đổi bạn muốn commit.',
+    description:
+      'Kiến thức Git liên quan - Giải thích ngắn gọn, đúng trọng tâm',
+    example:
+      'Git commit chỉ có thể thực hiện khi có ít nhất một file trong staging area. Staging area là nơi Git lưu các thay đổi bạn muốn commit.',
   })
   gitKnowledge!: string;
 
   @ApiProperty({
     description: 'Hướng giải quyết - Định hướng cách làm',
-    example: 'Bạn cần sử dụng lệnh git add để thêm file vào staging area trước. Sau đó mới có thể commit.',
+    example:
+      'Bạn cần sử dụng lệnh git add để thêm file vào staging area trước. Sau đó mới có thể commit.',
   })
   solution!: string;
 
@@ -107,8 +119,8 @@ export class AiAssistantResponseDto {
 
   @ApiPropertyOptional({
     description: 'Cảnh báo rủi ro (nếu có)',
-    example: 'Lưu ý: git add . sẽ thêm tất cả file, kể cả file không mong muốn.',
+    example:
+      'Lưu ý: git add . sẽ thêm tất cả file, kể cả file không mong muốn.',
   })
   warning?: string;
 }
-

@@ -11,12 +11,17 @@ describe('Users & Sessions E2E', () => {
   const password = 'P@ssw0rd!';
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleFixture.createNestApplication();
     await app.init();
     server = app.getHttpServer();
 
-    await request(server).post('/auth/register').send({ email, password }).expect(201);
+    await request(server)
+      .post('/auth/register')
+      .send({ email, password })
+      .expect(201);
     const loginRes = await request(server)
       .post('/auth/login')
       .set('user-agent', 'jest')
@@ -30,7 +35,10 @@ describe('Users & Sessions E2E', () => {
   });
 
   it('GET /users/me returns profile', async () => {
-    const res = await request(server).get('/users/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
+    const res = await request(server)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
     expect(res.body).toHaveProperty('email', email);
   });
 
@@ -52,5 +60,3 @@ describe('Users & Sessions E2E', () => {
     expect(res.body).toHaveProperty('userAgent');
   });
 });
-
-

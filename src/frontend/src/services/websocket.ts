@@ -77,6 +77,7 @@ class WebSocketService {
     const currentToken = (this.socket?.auth as any)?.token;
     
     if (newToken && newToken !== currentToken && this.socket) {
+      console.log('🔄 Updating WebSocket token, reconnecting...');
       this.disconnect();
       setTimeout(() => {
         if (!this.socket?.connected) {
@@ -117,8 +118,17 @@ class WebSocketService {
     const baseURL = apiUrl.replace(/\/api\/?.*$/, '') || 'http://localhost:8000';
     
     const token = this.getToken();
+    const socketUrl = `${baseURL}${namespace}`;
 
-    this.socket = io(`${baseURL}${namespace}`, {
+    console.log('🔌 [WebSocketService] Creating socket connection', {
+      namespace,
+      baseURL,
+      socketUrl,
+      hasToken: !!token,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: this.config.reconnectDelay,
@@ -139,11 +149,67 @@ class WebSocketService {
       this.reconnectAttempts = 0;
       this.lastPingTime = Date.now();
       
+      const actualNamespace = (this.socket as any)?.nsp?.name || namespace;
+      console.log(`✅ [WebSocketService] CONNECTED to ${namespace}`, {
+        namespace,
+        actualNamespace,
+        socketId: this.socket?.id,
+        socketUrl: (this.socket as any)?.io?.uri,
+        transport: (this.socket as any)?.io?.engine?.transport?.name,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Verify namespace matches
+      if (actualNamespace !== namespace) {
+        console.error(`❌ [WebSocketService] Namespace mismatch! Expected: ${namespace}, Actual: ${actualNamespace}`);
+      }
+      
+      // Register all listeners from Map to the connected socket
+      const listenerCount = Array.from(this.listeners.values()).reduce((sum, callbacks) => sum + callbacks.size, 0);
+      console.log(`📝 [WebSocketService] Registering ${listenerCount} listener(s) for ${namespace}`, {
+        namespace,
+        listenerCount,
+        events: Array.from(this.listeners.keys()),
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Remove any existing listeners first to avoid duplicates
       this.listeners.forEach((callbacks, event) => {
+        // Remove all existing listeners for this event
+        this.socket?.removeAllListeners(event);
+        
+        // Register all callbacks for this event
         callbacks.forEach((callback) => {
-          this.socket?.on(event, callback);
+          // Wrap callback to add logging
+          const wrappedCallback = (...args: any[]) => {
+            console.log(`📨 [WebSocketService] Event received: ${event}`, {
+              event,
+              namespace,
+              socketId: this.socket?.id,
+              args,
+              timestamp: new Date().toISOString(),
+            });
+            callback(...args);
+          };
+          this.socket?.on(event, wrappedCallback);
+          console.log(`  📌 [WebSocketService] Registered listener for event: ${event}`, {
+            namespace,
+            event,
+            timestamp: new Date().toISOString(),
+          });
         });
       });
+
+      // Debug: Log all registered events (if available)
+      if (process.env.NODE_ENV === 'development' && this.socket) {
+        try {
+          // socket.io-client doesn't have eventNames(), but we can log what we registered
+          const registeredEvents = Array.from(this.listeners.keys());
+          console.log(`  📋 Registered ${registeredEvents.length} event type(s):`, registeredEvents);
+        } catch (error) {
+          // Ignore if eventNames is not available
+        }
+      }
 
       this.startHealthCheck();
     });
@@ -163,6 +229,12 @@ class WebSocketService {
     });
 
     this.socket.on(SocketEvents.SERVER_TO_CLIENT.CONNECT_ERROR, (error) => {
+      console.error(`❌ [WebSocketService] CONNECTION ERROR for ${namespace}`, {
+        namespace,
+        error,
+        errorMessage: error?.message,
+        timestamp: new Date().toISOString(),
+      });
       this.connectionState = 'connecting';
       this.reconnectAttempts++;
       
@@ -217,37 +289,81 @@ class WebSocketService {
   connect(namespace: string = '/ratings'): Socket {
     this.config.namespace = namespace;
 
+    console.log('🔌 [WebSocketService] connect called', {
+      namespace,
+      currentNamespace: this.currentNamespace,
+      hasSocket: !!this.socket,
+      isConnected: this.socket?.connected,
+      connectionState: this.connectionState,
+      timestamp: new Date().toISOString(),
+    });
+
     if (this.socket?.connected && this.currentNamespace === namespace) {
+      console.log('✅ [WebSocketService] Already connected to same namespace, returning existing socket', {
+        namespace,
+        socketId: this.socket.id,
+      });
       return this.socket;
     }
 
     if (this.socket && this.currentNamespace === namespace && this.connectionState === 'connecting') {
+      console.log('⏳ [WebSocketService] Connection in progress to same namespace, returning existing socket', {
+        namespace,
+      });
       return this.socket;
     }
 
     if (this.socket) {
       if (this.currentNamespace !== namespace || this.connectionState === 'disconnected') {
+        console.log('🔄 [WebSocketService] Disconnecting existing socket to connect to new namespace', {
+          oldNamespace: this.currentNamespace,
+          newNamespace: namespace,
+        });
         this.disconnect();
       }
     }
 
     this.currentNamespace = namespace;
+    console.log('🆕 [WebSocketService] Creating new socket connection', {
+      namespace,
+      timestamp: new Date().toISOString(),
+    });
     return this.createSocket(namespace);
   }
 
   async connectWithAuth(namespace: string = '/ratings'): Promise<Socket> {
+    console.log('🔌 [WebSocketService] connectWithAuth called', {
+      namespace,
+      currentNamespace: this.currentNamespace,
+      isConnected: this.socket?.connected,
+      connectionState: this.connectionState,
+      timestamp: new Date().toISOString(),
+    });
+
     if (this.socket?.connected && this.currentNamespace === namespace) {
+      console.log('✅ [WebSocketService] Already connected to namespace, returning existing socket', {
+        namespace,
+        socketId: this.socket.id,
+      });
       return this.socket;
     }
 
     if (this.socket && this.currentNamespace === namespace && this.connectionState === 'connecting') {
+      console.log('⏳ [WebSocketService] Connection in progress, waiting...', { namespace });
       return new Promise<Socket>((resolve, reject) => {
         if (this.socket?.connected) {
+          console.log('✅ [WebSocketService] Socket connected while waiting', {
+            socketId: this.socket.id,
+          });
           resolve(this.socket);
           return;
         }
 
         const onConnect = () => {
+          console.log('✅ [WebSocketService] Connected while waiting', {
+            namespace,
+            socketId: this.socket?.id,
+          });
           cleanup();
           if (this.socket?.connected) {
             resolve(this.socket);
@@ -257,11 +373,19 @@ class WebSocketService {
         };
 
         const onConnectError = (error: any) => {
+          console.error('❌ [WebSocketService] Connection error while waiting', {
+            namespace,
+            error,
+            errorMessage: error?.message,
+          });
           cleanup();
           reject(error);
         };
 
         const onDisconnect = () => {
+          console.log('⚠️ [WebSocketService] Disconnected while waiting, reconnecting...', {
+            namespace,
+          });
           cleanup();
           resolve(this.connect(namespace));
         };
@@ -282,17 +406,27 @@ class WebSocketService {
       });
     }
 
+    console.log('🔌 [WebSocketService] Creating new connection...', { namespace });
     return this.connect(namespace);
   }
 
   disconnect(): void {
     if (this.socket) {
+      console.log('🔌 [WebSocketService] Disconnecting socket', {
+        socketId: this.socket.id,
+        namespace: this.currentNamespace,
+        connected: this.socket.connected,
+        timestamp: new Date().toISOString(),
+      });
       this.socket.disconnect();
       this.socket.removeAllListeners();
       this.socket = null;
+      this.currentNamespace = null;
       this.connectionState = 'disconnected';
+      this.connectionStatus = 'disconnected';
       this.stopHealthCheck();
       this.reconnectAttempts = 0;
+      console.log('✅ [WebSocketService] Socket disconnected successfully');
     }
   }
 
@@ -302,8 +436,13 @@ class WebSocketService {
     }
     this.listeners.get(event)?.add(callback);
 
-    if (this.socket) {
+    if (this.socket && this.socket.connected) {
       this.socket.on(event, callback);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📝 Registered listener for event: ${event} on connected socket`);
+      }
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log(`📝 Added listener for event: ${event} to Map (socket not connected yet)`);
     }
   }
 
@@ -370,6 +509,58 @@ class WebSocketService {
         } else {
           const error = response?.error || response;
           reject(new Error(error?.message || 'Failed to unsubscribe'));
+        }
+      });
+    });
+  }
+
+  subscribeToPayment(paymentId: string): Promise<{ success: boolean; paymentId: string }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Subscribe payment timeout'));
+      }, 5000);
+
+      this.socket.emit(SocketEvents.CLIENT_TO_SERVER.SUBSCRIBE_PAYMENT, { paymentId }, (response: any) => {
+        clearTimeout(timeout);
+        
+        if (response && response.success === true) {
+          resolve(response);
+        } else if (response && response.success === false) {
+          reject(new Error(response.message || 'Failed to subscribe payment'));
+        } else {
+          const error = response?.error || response;
+          reject(new Error(error?.message || 'Failed to subscribe payment'));
+        }
+      });
+    });
+  }
+
+  unsubscribeFromPayment(paymentId: string): Promise<{ success: boolean; paymentId: string }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Unsubscribe payment timeout'));
+      }, 5000);
+
+      this.socket.emit(SocketEvents.CLIENT_TO_SERVER.UNSUBSCRIBE_PAYMENT, { paymentId }, (response: any) => {
+        clearTimeout(timeout);
+        
+        if (response && response.success === true) {
+          resolve(response);
+        } else if (response && response.success === false) {
+          reject(new Error(response.message || 'Failed to unsubscribe payment'));
+        } else {
+          const error = response?.error || response;
+          reject(new Error(error?.message || 'Failed to unsubscribe payment'));
         }
       });
     });

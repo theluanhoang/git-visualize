@@ -7,12 +7,17 @@ import { OAuthProviderType } from 'src/modules/users/oauth.interface';
 import { OAuthProfile } from '../../../shared/types/auth.types';
 
 @Injectable()
-export class FacebookOAuthStrategy extends PassportStrategy(FacebookPassportStrategy, 'facebook') {
+export class FacebookOAuthStrategy extends PassportStrategy(
+  FacebookPassportStrategy,
+  'facebook',
+) {
   constructor(private configService: ConfigService) {
     const clientId = configService.get<string>('oauth.facebook.clientId');
-    const clientSecret = configService.get<string>('oauth.facebook.clientSecret');
+    const clientSecret = configService.get<string>(
+      'oauth.facebook.clientSecret',
+    );
     const callbackURL = configService.get<string>('oauth.facebook.callbackUrl');
-    
+
     if (!clientId || !clientSecret || !callbackURL) {
       super({
         clientID: 'dummy',
@@ -22,7 +27,7 @@ export class FacebookOAuthStrategy extends PassportStrategy(FacebookPassportStra
       });
       return;
     }
-    
+
     super({
       clientID: clientId,
       clientSecret: clientSecret,
@@ -40,7 +45,7 @@ export class FacebookOAuthStrategy extends PassportStrategy(FacebookPassportStra
     done: (error: any, user?: any) => void,
   ): Promise<void> {
     const { emails, name, photos } = profile;
-    
+
     const userInfo: OAuthUserInfoDto = {
       email: emails?.[0]?.value, // do not fabricate email
       name: name ? `${name.givenName} ${name.familyName}` : profile.id,

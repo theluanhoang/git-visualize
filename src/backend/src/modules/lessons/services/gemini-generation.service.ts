@@ -43,138 +43,194 @@ export class GeminiGenerationService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`Attempt ${attempt}/${maxRetries} to generate lesson with practices`);
-        
-        const modelInstance = this.genAI.getGenerativeModel({ 
-          model: model === ModelType.GEMINI_PRO ? 'gemini-2.5-pro' : 'gemini-2.5-flash' 
+        console.log(
+          `Attempt ${attempt}/${maxRetries} to generate lesson with practices`,
+        );
+
+        const modelInstance = this.genAI.getGenerativeModel({
+          model:
+            model === ModelType.GEMINI_PRO
+              ? 'gemini-2.5-pro'
+              : 'gemini-2.5-flash',
         });
 
-      const prompt = this.buildPrompt(extractedContent, language, outlineStyle, additionalInstructions);
-      
-      const result = await modelInstance.generateContent(prompt);
-      const response = await result.response;
-      const rawText = response.text();
+        const prompt = this.buildPrompt(
+          extractedContent,
+          language,
+          outlineStyle,
+          additionalInstructions,
+        );
 
-      let html = rawText;
-      let practices: any[] | undefined = undefined;
-      let quizzes: any[] | undefined = undefined;
-      let generatedTitle = '';
-      let generatedSlug = '';
-      let generatedDescription = '';
-      
-      try {
-        const match = rawText.match(/^\s*<!--JSON\s*(\{[\s\S]*?\})\s*-->/);
-        if (match) {
-          const jsonPart = match[1];
-          
-          try {
-            const parsed = JSON.parse(jsonPart);
-            
-            if (typeof parsed?.title === 'string') {
-              generatedTitle = parsed.title.trim();
-            }
-            if (typeof parsed?.description === 'string') {
-              generatedDescription = parsed.description.trim();
-            }
-            if (typeof parsed?.slug === 'string') {
-              generatedSlug = parsed.slug.trim();
-            }
+        const result = await modelInstance.generateContent(prompt);
+        const response = await result.response;
+        const rawText = response.text();
 
-            if (Array.isArray(parsed?.practices)) {
-              practices = parsed.practices;
-              
-              if (Array.isArray(practices) && practices.length === 0) {
-                console.warn('AI generated empty practices array, retrying...');
-                throw new Error('Empty practices array');
+        let html = rawText;
+        let practices: any[] | undefined = undefined;
+        let quizzes: any[] | undefined = undefined;
+        let generatedTitle = '';
+        let generatedSlug = '';
+        let generatedDescription = '';
+
+        try {
+          const match = rawText.match(/^\s*<!--JSON\s*(\{[\s\S]*?\})\s*-->/);
+          if (match) {
+            const jsonPart = match[1];
+
+            try {
+              const parsed = JSON.parse(jsonPart);
+
+              if (typeof parsed?.title === 'string') {
+                generatedTitle = parsed.title.trim();
               }
-            } else {
-              console.warn('AI did not generate practices array, retrying...');
-              throw new Error('No practices array found');
+              if (typeof parsed?.description === 'string') {
+                generatedDescription = parsed.description.trim();
+              }
+              if (typeof parsed?.slug === 'string') {
+                generatedSlug = parsed.slug.trim();
+              }
+
+              if (Array.isArray(parsed?.practices)) {
+                practices = parsed.practices;
+
+                if (Array.isArray(practices) && practices.length === 0) {
+                  console.warn(
+                    'AI generated empty practices array, retrying...',
+                  );
+                  throw new Error('Empty practices array');
+                }
+              } else {
+                console.warn(
+                  'AI did not generate practices array, retrying...',
+                );
+                throw new Error('No practices array found');
+              }
+
+              // Parse quizzes if available (optional)
+              if (Array.isArray(parsed?.quizzes)) {
+                quizzes = parsed.quizzes;
+              }
+            } catch (jsonError) {
+              console.error('Invalid JSON from AI:', jsonError.message);
+              console.error(
+                'JSON content (first 500 chars):',
+                jsonPart.substring(0, 500),
+              );
+              console.error(
+                'JSON content (last 500 chars):',
+                jsonPart.substring(Math.max(0, jsonPart.length - 500)),
+              );
+              throw new Error(
+                `Invalid JSON format from AI: ${jsonError.message}`,
+              );
             }
 
-            // Parse quizzes if available (optional)
-            if (Array.isArray(parsed?.quizzes)) {
-              quizzes = parsed.quizzes;
-            }
-          } catch (jsonError) {
-            console.error('Invalid JSON from AI:', jsonError.message);
-            console.error('JSON content (first 500 chars):', jsonPart.substring(0, 500));
-            console.error('JSON content (last 500 chars):', jsonPart.substring(Math.max(0, jsonPart.length - 500)));
-            throw new Error(`Invalid JSON format from AI: ${jsonError.message}`);
+            html = rawText.replace(match[0], '').trim();
+          } else {
+            console.warn(
+              'AI did not include JSON comment with practices, retrying...',
+            );
+            throw new Error('No practices JSON comment found');
           }
-          
-          html = rawText.replace(match[0], '').trim();
-        } else {
-          console.warn('AI did not include JSON comment with practices, retrying...');
-          throw new Error('No practices JSON comment found');
+        } catch (error) {
+          console.warn('JSON parse error or missing practices:', error);
+          throw error;
         }
+
+        const sanitizedHtml = this.sanitizeHtml(html);
+        const title = this.ensureTitle(generatedTitle, extractedContent);
+        const description = this.ensureDescription(
+          generatedDescription,
+          sanitizedHtml,
+          extractedContent,
+        );
+        const slug = this.generateSlug(generatedSlug || title);
+
+        const processingTime = Date.now() - startTime;
+
+        return {
+          html: sanitizedHtml,
+          meta: {
+            model: model,
+            tokens: this.estimateTokens(prompt + html),
+            citations: this.extractCitations(extractedContent),
+            processingTime,
+          },
+          title,
+          slug,
+          description,
+          ...(practices ? { practices } : {}),
+          ...(quizzes ? { quizzes } : {}),
+        };
       } catch (error) {
-        console.warn('JSON parse error or missing practices:', error);
-        throw error;
-      }
+        console.error(
+          `Gemini API Error (attempt ${attempt}/${maxRetries}):`,
+          error,
+        );
 
-      const sanitizedHtml = this.sanitizeHtml(html);
-      const title = this.ensureTitle(generatedTitle, extractedContent);
-      const description = this.ensureDescription(generatedDescription, sanitizedHtml, extractedContent);
-      const slug = this.generateSlug(generatedSlug || title);
-
-      const processingTime = Date.now() - startTime;
-
-      return {
-        html: sanitizedHtml,
-        meta: {
-          model: model,
-          tokens: this.estimateTokens(prompt + html),
-          citations: this.extractCitations(extractedContent),
-          processingTime,
-        },
-        title,
-        slug,
-        description,
-        ...(practices ? { practices } : {}),
-        ...(quizzes ? { quizzes } : {}),
-      };
-      } catch (error) {
-        console.error(`Gemini API Error (attempt ${attempt}/${maxRetries}):`, error);
-        
-        if (error.message?.includes('practices') || error.message?.includes('Empty practices')) {
+        if (
+          error.message?.includes('practices') ||
+          error.message?.includes('Empty practices')
+        ) {
           console.error('AI failed to generate practices. Retrying...');
           if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
             continue;
           }
         }
-        
+
         if (error.message?.includes('503 Service Unavailable')) {
           if (attempt < maxRetries) {
-            console.log(`Retrying in ${retryDelay}ms... (attempt ${attempt + 1}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            console.log(
+              `Retrying in ${retryDelay}ms... (attempt ${attempt + 1}/${maxRetries})`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
             continue;
           } else {
-            throw new BadRequestException('Gemini API is temporarily overloaded. Please try again in a few minutes.');
+            throw new BadRequestException(
+              'Gemini API is temporarily overloaded. Please try again in a few minutes.',
+            );
           }
         } else if (error.message?.includes('429')) {
           if (attempt < maxRetries) {
-            console.log(`Rate limit exceeded. Retrying in ${retryDelay * 2}ms... (attempt ${attempt + 1}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, retryDelay * 2));
+            console.log(
+              `Rate limit exceeded. Retrying in ${retryDelay * 2}ms... (attempt ${attempt + 1}/${maxRetries})`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelay * 2));
             continue;
           } else {
-            throw new BadRequestException('Rate limit exceeded. Please wait before trying again.');
+            throw new BadRequestException(
+              'Rate limit exceeded. Please wait before trying again.',
+            );
           }
-        } else if (error.message?.includes('401') || error.message?.includes('403')) {
-          throw new BadRequestException('Invalid API key. Please check your GEMINI_API_KEY configuration.');
+        } else if (
+          error.message?.includes('401') ||
+          error.message?.includes('403')
+        ) {
+          throw new BadRequestException(
+            'Invalid API key. Please check your GEMINI_API_KEY configuration.',
+          );
         } else if (error.message?.includes('404')) {
-          throw new BadRequestException('Model not found. Please check the model name configuration.');
+          throw new BadRequestException(
+            'Model not found. Please check the model name configuration.',
+          );
         } else {
-          throw new BadRequestException(`Failed to generate lesson content: ${error.message}`);
+          throw new BadRequestException(
+            `Failed to generate lesson content: ${error.message}`,
+          );
         }
       }
     }
-    
-    throw new BadRequestException('Failed to generate lesson content after multiple attempts.');
+
+    throw new BadRequestException(
+      'Failed to generate lesson content after multiple attempts.',
+    );
   }
 
-  private ensureTitle(generatedTitle: string, extractedContent: ExtractedContent): string {
+  private ensureTitle(
+    generatedTitle: string,
+    extractedContent: ExtractedContent,
+  ): string {
     const fallbackTitle = extractedContent.title?.trim();
     const title = generatedTitle?.trim() || fallbackTitle;
 
@@ -185,8 +241,15 @@ export class GeminiGenerationService {
     return this.capitalizeTitle(title);
   }
 
-  private ensureDescription(generatedDescription: string, sanitizedHtml: string, extractedContent: ExtractedContent): string {
-    const description = generatedDescription?.trim() || this.extractSummaryFromHtml(sanitizedHtml) || this.extractSummaryFromContent(extractedContent.content);
+  private ensureDescription(
+    generatedDescription: string,
+    sanitizedHtml: string,
+    extractedContent: ExtractedContent,
+  ): string {
+    const description =
+      generatedDescription?.trim() ||
+      this.extractSummaryFromHtml(sanitizedHtml) ||
+      this.extractSummaryFromContent(extractedContent.content);
 
     if (!description) {
       throw new Error('Missing lesson description from AI response');
@@ -200,7 +263,7 @@ export class GeminiGenerationService {
     return title
       .split(' ')
       .filter(Boolean)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
       .trim();
   }
@@ -218,10 +281,7 @@ export class GeminiGenerationService {
 
   private extractSummaryFromContent(content: string): string {
     if (!content) return '';
-    return content
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 220);
+    return content.replace(/\s+/g, ' ').trim().slice(0, 220);
   }
 
   private truncate(text: string, maxLength: number): string {
@@ -255,9 +315,10 @@ export class GeminiGenerationService {
   ): string {
     const isVietnamese = language === Language.VI;
     const languageName = isVietnamese ? 'Vietnamese' : 'English';
-    const styleInstruction = outlineStyle === OutlineStyle.DETAILED 
-      ? 'detailed explanations with step-by-step instructions' 
-      : 'concise explanations with key points';
+    const styleInstruction =
+      outlineStyle === OutlineStyle.DETAILED
+        ? 'detailed explanations with step-by-step instructions'
+        : 'concise explanations with key points';
 
     return `
 You are an expert Git instructor. Create a comprehensive lesson in ${languageName} based on the provided source content.
@@ -484,9 +545,26 @@ Generate a complete lesson in ${languageName} that teaches Git concepts based on
 
   private sanitizeHtml(html: string): string {
     const allowedTags = [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'ul', 'ol', 'li', 'a', 'strong', 'em',
-      'code', 'pre', 'blockquote', 'hr', 'mark', 'sub', 'sup'
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'p',
+      'ul',
+      'ol',
+      'li',
+      'a',
+      'strong',
+      'em',
+      'code',
+      'pre',
+      'blockquote',
+      'hr',
+      'mark',
+      'sub',
+      'sup',
     ];
 
     let sanitized = html
@@ -496,8 +574,8 @@ Generate a complete lesson in ${languageName} that teaches Git concepts based on
       .replace(/javascript:/gi, '');
 
     sanitized = sanitized.replace(
-      /<pre><code(?!\s+class=)/g, 
-      '<pre><code class="language-text"'
+      /<pre><code(?!\s+class=)/g,
+      '<pre><code class="language-text"',
     );
 
     sanitized = sanitized.replace(/\r\n/g, '\n');
@@ -507,27 +585,30 @@ Generate a complete lesson in ${languageName} that teaches Git concepts based on
       .replace(/<h[1-6]>\s*<\/h[1-6]>/g, '')
       .trim();
 
-    sanitized = sanitized.replace(/<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/gi, (_match, attrs, codeContent) => {
-      let normalized = codeContent
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/\r\n/g, '\n');
+    sanitized = sanitized.replace(
+      /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/gi,
+      (_match, attrs, codeContent) => {
+        let normalized = codeContent
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/\r\n/g, '\n');
 
-      normalized = normalized
-        .split('\n')
-        .map(line => line.replace(/\s+$/g, ''))
-        .join('\n')
-        .replace(/\n{2,}/g, '\n\n');
+        normalized = normalized
+          .split('\n')
+          .map((line) => line.replace(/\s+$/g, ''))
+          .join('\n')
+          .replace(/\n{2,}/g, '\n\n');
 
-      normalized = normalized
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        normalized = normalized
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
 
-      return `<pre><code${attrs}>${normalized}</code></pre>`;
-    });
+        return `<pre><code${attrs}>${normalized}</code></pre>`;
+      },
+    );
 
     return sanitized;
   }
@@ -538,11 +619,11 @@ Generate a complete lesson in ${languageName} that teaches Git concepts based on
 
   private extractCitations(extractedContent: ExtractedContent): string[] {
     const citations: string[] = [];
-    
+
     if (extractedContent.metadata.source.startsWith('http')) {
       citations.push(extractedContent.metadata.source);
     }
-    
+
     return citations;
   }
 }

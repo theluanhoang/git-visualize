@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -25,9 +29,13 @@ export class OAuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private deviceTrackingService: DeviceTrackingService,
-  ) { }
+  ) {}
 
-  async validateOAuthUser(userInfo: OAuthUserInfoDto, userAgent?: string, ip?: string): Promise<OAuthLoginResponseDto> {
+  async validateOAuthUser(
+    userInfo: OAuthUserInfoDto,
+    userAgent?: string,
+    ip?: string,
+  ): Promise<OAuthLoginResponseDto> {
     let oauthProvider = await this.oauthProviderRepository.findOne({
       where: {
         provider: userInfo.provider,
@@ -69,7 +77,8 @@ export class OAuthService {
         isNewUser = true;
         user = this.userRepository.create({
           // Store a stable internal identifier when email is not provided by provider
-          email: userInfo.email ?? `${userInfo.provider}:${userInfo.providerId}`,
+          email:
+            userInfo.email ?? `${userInfo.provider}:${userInfo.providerId}`,
           firstName: userInfo.name?.split(' ')[0],
           lastName: userInfo.name?.split(' ').slice(1).join(' '),
           avatar: userInfo.avatar,
@@ -93,13 +102,19 @@ export class OAuthService {
     const tokens = await this.generateTokens(user);
 
     const [oauthAccessTokenHash, oauthRefreshTokenHash] = await Promise.all([
-      userInfo.accessToken ? argon2.hash(userInfo.accessToken, { type: argon2.argon2id }) : null,
-      userInfo.refreshToken ? argon2.hash(userInfo.refreshToken, { type: argon2.argon2id }) : null,
+      userInfo.accessToken
+        ? argon2.hash(userInfo.accessToken, { type: argon2.argon2id })
+        : null,
+      userInfo.refreshToken
+        ? argon2.hash(userInfo.refreshToken, { type: argon2.argon2id })
+        : null,
     ]);
 
     const session = new Session();
     session.userId = user.id;
-    session.refreshTokenHash = await argon2.hash(tokens.refreshToken, { type: argon2.argon2id });
+    session.refreshTokenHash = await argon2.hash(tokens.refreshToken, {
+      type: argon2.argon2id,
+    });
     session.userAgent = userAgent || null;
     session.ip = ip || null;
     session.expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
@@ -108,7 +123,9 @@ export class OAuthService {
     session.oauthProviderId = userInfo.providerId;
     session.oauthAccessTokenHash = oauthAccessTokenHash || undefined;
     session.oauthRefreshTokenHash = oauthRefreshTokenHash || undefined;
-    session.oauthTokenExpiresAt = userInfo.accessToken ? new Date(Date.now() + 60 * 60 * 1000) : undefined;
+    session.oauthTokenExpiresAt = userInfo.accessToken
+      ? new Date(Date.now() + 60 * 60 * 1000)
+      : undefined;
 
     const savedSession = await this.sessionRepository.save(session);
 
@@ -116,7 +133,7 @@ export class OAuthService {
       await this.deviceTrackingService.updateSessionWithDeviceInfo(
         savedSession.id,
         userAgent,
-        ip
+        ip,
       );
     }
 
@@ -137,20 +154,30 @@ export class OAuthService {
   }
 
   async validateOAuthConfiguration(provider: string): Promise<void> {
-    const clientId = this.configService.get<string>(`oauth.${provider}.clientId`);
-    const clientSecret = this.configService.get<string>(`oauth.${provider}.clientSecret`);
-    
+    const clientId = this.configService.get<string>(
+      `oauth.${provider}.clientId`,
+    );
+    const clientSecret = this.configService.get<string>(
+      `oauth.${provider}.clientSecret`,
+    );
+
     if (!clientId || !clientSecret) {
       throw new BadRequestException(`${provider} OAuth is not configured`);
     }
   }
 
-  async buildOAuthRedirectUrl(result: OAuthLoginResponseDto, locale: string = 'en'): Promise<string> {
+  async buildOAuthRedirectUrl(
+    result: OAuthLoginResponseDto,
+    locale: string = 'en',
+  ): Promise<string> {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     return `${frontendUrl}/${locale}/auth/callback?access_token=${result.accessToken}&refresh_token=${result.refreshToken}&is_new_user=${result.isNewUser}`;
   }
 
-  async unlinkOAuthProviderWithValidation(userId: string, provider: string): Promise<{ message: string }> {
+  async unlinkOAuthProviderWithValidation(
+    userId: string,
+    provider: string,
+  ): Promise<{ message: string }> {
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
@@ -163,15 +190,24 @@ export class OAuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
     };
 
-    const accessTokenSecret = this.configService.get<string>('auth.jwtAccessSecret');
-    const refreshTokenSecret = this.configService.get<string>('auth.jwtRefreshSecret');
+    const accessTokenSecret = this.configService.get<string>(
+      'auth.jwtAccessSecret',
+    );
+    const refreshTokenSecret = this.configService.get<string>(
+      'auth.jwtRefreshSecret',
+    );
     const accessTtl = this.configService.get<string>('auth.accessTtl');
     const refreshTtl = this.configService.get<string>('auth.refreshTtl');
 
-    if (!accessTokenSecret || !refreshTokenSecret || !accessTtl || !refreshTtl) {
+    if (
+      !accessTokenSecret ||
+      !refreshTokenSecret ||
+      !accessTtl ||
+      !refreshTtl
+    ) {
       throw new Error('JWT configuration is missing');
     }
 
@@ -185,7 +221,7 @@ export class OAuthService {
     const oauthProvider = await this.oauthProviderRepository.findOne({
       where: {
         userId,
-        provider: provider.toUpperCase() as OAuthProviderType
+        provider: provider.toUpperCase() as OAuthProviderType,
       },
     });
 
@@ -203,7 +239,9 @@ export class OAuthService {
     }
 
     if (!user.passwordHash && user.oauthProviders.length <= 1) {
-      throw new UnauthorizedException('Cannot unlink the only authentication method');
+      throw new UnauthorizedException(
+        'Cannot unlink the only authentication method',
+      );
     }
 
     await this.oauthProviderRepository.remove(oauthProvider);

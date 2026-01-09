@@ -3,7 +3,7 @@ import { seedPracticeData } from './seed-practice-data';
 
 export async function setupPracticeData(dataSource: DataSource) {
   console.log('🚀 Setting up practice data...');
-  
+
   try {
     // Run migrations
     console.log('📦 Running migrations...');
@@ -26,8 +26,9 @@ export async function setupPracticeData(dataSource: DataSource) {
 if (require.main === module) {
   const ormconfig = require('../../ormconfig.js');
   const dataSource = ormconfig.default;
-  
-  dataSource.initialize()
+
+  dataSource
+    .initialize()
     .then(() => setupPracticeData(dataSource))
     .then(() => {
       console.log('✅ Database setup completed');

@@ -5,7 +5,10 @@ import { Practice } from '../modules/practice/entities/practice.entity';
 import { PracticeInstruction } from '../modules/practice/entities/practice-instruction.entity';
 import { PracticeHint } from '../modules/practice/entities/practice-hint.entity';
 import { PracticeExpectedCommand } from '../modules/practice/entities/practice-expected-command.entity';
-import { PracticeValidationRule, ValidationRuleType } from '../modules/practice/entities/practice-validation-rule.entity';
+import {
+  PracticeValidationRule,
+  ValidationRuleType,
+} from '../modules/practice/entities/practice-validation-rule.entity';
 import { PracticeTag } from '../modules/practice/entities/practice-tag.entity';
 
 async function seedCompleteLesson() {
@@ -26,10 +29,13 @@ async function seedCompleteLesson() {
     entities: [
       require('../modules/lessons/lesson.entity').Lesson,
       require('../modules/practice/entities/practice.entity').Practice,
-      require('../modules/practice/entities/practice-instruction.entity').PracticeInstruction,
+      require('../modules/practice/entities/practice-instruction.entity')
+        .PracticeInstruction,
       require('../modules/practice/entities/practice-hint.entity').PracticeHint,
-      require('../modules/practice/entities/practice-expected-command.entity').PracticeExpectedCommand,
-      require('../modules/practice/entities/practice-validation-rule.entity').PracticeValidationRule,
+      require('../modules/practice/entities/practice-expected-command.entity')
+        .PracticeExpectedCommand,
+      require('../modules/practice/entities/practice-validation-rule.entity')
+        .PracticeValidationRule,
       require('../modules/practice/entities/practice-tag.entity').PracticeTag,
     ],
     synchronize: true,
@@ -56,7 +62,8 @@ async function seedCompleteLesson() {
     const lesson = dataSource.getRepository(Lesson).create({
       title: 'Git Fundamentals: Complete Guide',
       slug: 'git-fundamentals-complete-guide',
-      description: 'Master the essential Git concepts and commands from scratch. Learn version control, branching, merging, and collaboration workflows.',
+      description:
+        'Master the essential Git concepts and commands from scratch. Learn version control, branching, merging, and collaboration workflows.',
       content: `# Git Fundamentals: Complete Guide
 
 ## What is Git?
@@ -168,14 +175,17 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
     });
 
     const savedLesson = await dataSource.getRepository(Lesson).save(lesson);
-    console.log(`✅ Lesson created: ${savedLesson.title} (ID: ${savedLesson.id})`);
+    console.log(
+      `✅ Lesson created: ${savedLesson.title} (ID: ${savedLesson.id})`,
+    );
 
     // Create comprehensive practice
     console.log('🏋️ Creating comprehensive practice...');
     const practice = dataSource.getRepository(Practice).create({
       lessonId: savedLesson.id,
       title: 'Git Repository Setup and First Commit',
-      scenario: 'You are starting a new project and need to set up version control. Create a new Git repository, add your project files, and make your first commit with a proper message.',
+      scenario:
+        'You are starting a new project and need to set up version control. Create a new Git repository, add your project files, and make your first commit with a proper message.',
       difficulty: 1,
       estimatedTime: 15,
       isActive: true,
@@ -186,8 +196,12 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
       updatedAt: new Date(),
     });
 
-    const savedPractice = await dataSource.getRepository(Practice).save(practice);
-    console.log(`✅ Practice created: ${savedPractice.title} (ID: ${savedPractice.id})`);
+    const savedPractice = await dataSource
+      .getRepository(Practice)
+      .save(practice);
+    console.log(
+      `✅ Practice created: ${savedPractice.title} (ID: ${savedPractice.id})`,
+    );
 
     // Create detailed instructions
     console.log('📋 Creating step-by-step instructions...');
@@ -247,7 +261,7 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
         order: 8,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     await dataSource.getRepository(PracticeInstruction).save(instructions);
@@ -311,7 +325,7 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
         order: 8,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     await dataSource.getRepository(PracticeHint).save(hints);
@@ -383,10 +397,12 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
         isRequired: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
-    await dataSource.getRepository(PracticeExpectedCommand).save(expectedCommands);
+    await dataSource
+      .getRepository(PracticeExpectedCommand)
+      .save(expectedCommands);
     console.log(`✅ Created ${expectedCommands.length} expected commands`);
 
     // Create validation rules
@@ -396,7 +412,8 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
         practiceId: savedPractice.id,
         type: ValidationRuleType.MIN_COMMANDS,
         value: '6',
-        message: 'You need to execute at least 6 commands to complete this practice',
+        message:
+          'You need to execute at least 6 commands to complete this practice',
         order: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -418,10 +435,12 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
         order: 3,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
-    await dataSource.getRepository(PracticeValidationRule).save(validationRules);
+    await dataSource
+      .getRepository(PracticeValidationRule)
+      .save(validationRules);
     console.log(`✅ Created ${validationRules.length} validation rules`);
 
     // Create tags
@@ -454,7 +473,7 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
         color: '#9C27B0',
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     await dataSource.getRepository(PracticeTag).save(tags);
@@ -469,8 +488,9 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
     console.log(`- Expected Commands: ${expectedCommands.length}`);
     console.log(`- Validation Rules: ${validationRules.length}`);
     console.log(`- Tags: ${tags.length}`);
-    console.log('\n🚀 The lesson is now ready for students to learn and practice!');
-
+    console.log(
+      '\n🚀 The lesson is now ready for students to learn and practice!',
+    );
   } catch (error) {
     console.error('💥 Seeding failed:', error);
     throw error;
@@ -481,7 +501,7 @@ Remember: Git is a powerful tool that takes time to master. Start with the basic
 }
 
 // Run the seeding
-seedCompleteLesson().catch(error => {
+seedCompleteLesson().catch((error) => {
   console.error('💥 Complete lesson seeding failed:', error);
   process.exit(1);
 });

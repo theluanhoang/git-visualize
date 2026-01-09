@@ -14,7 +14,9 @@ describe('Admin E2E', () => {
   let adminAccess: string;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleFixture.createNestApplication();
     await app.init();
     server = app.getHttpServer();
@@ -26,10 +28,16 @@ describe('Admin E2E', () => {
   });
 
   it('promotes user to admin and can access admin endpoints', async () => {
-    await request(server).post('/auth/register').send({ email, password }).expect(201);
+    await request(server)
+      .post('/auth/register')
+      .send({ email, password })
+      .expect(201);
 
     // promote role in DB
-    await dataSource.query('UPDATE "user" SET role = $1 WHERE email = $2', ['admin', email]);
+    await dataSource.query('UPDATE "user" SET role = $1 WHERE email = $2', [
+      'admin',
+      email,
+    ]);
 
     const loginRes = await request(server)
       .post('/auth/login')
@@ -48,7 +56,10 @@ describe('Admin E2E', () => {
 
   it('non-admin is forbidden', async () => {
     const u = `user_${Date.now()}@example.com`;
-    await request(server).post('/auth/register').send({ email: u, password }).expect(201);
+    await request(server)
+      .post('/auth/register')
+      .send({ email: u, password })
+      .expect(201);
     const loginRes = await request(server)
       .post('/auth/login')
       .set('user-agent', 'jest')
@@ -62,5 +73,3 @@ describe('Admin E2E', () => {
       .expect(403);
   });
 });
-
-

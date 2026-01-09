@@ -1,7 +1,9 @@
 import * as Joi from 'joi';
 
 export const envValidationSchema = Joi.object({
-  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
   PORT: Joi.number().default(8000),
   GLOBAL_PREFIX: Joi.string().default('api'),
 
@@ -18,7 +20,10 @@ export const envValidationSchema = Joi.object({
   DB_NAME: Joi.string().required(),
 
   TYPEORM_LOGGING: Joi.boolean().truthy('true').falsy('false').default(false),
-  TYPEORM_SYNCHRONIZE: Joi.boolean().truthy('true').falsy('false').default(false),
+  TYPEORM_SYNCHRONIZE: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
 
   MAIL_HOST: Joi.string().allow(''),
   MAIL_PORT: Joi.number().default(587),
@@ -30,5 +35,3 @@ export const envValidationSchema = Joi.object({
   ADMIN_EMAIL: Joi.string().email().default('admin@example.com'),
   ADMIN_PASSWORD: Joi.string().min(6).default('admin123'),
 });
-
-

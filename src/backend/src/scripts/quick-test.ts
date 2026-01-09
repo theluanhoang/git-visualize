@@ -6,11 +6,21 @@ console.log('==================');
 try {
   console.log('1️⃣ Testing entity imports...');
   const { Practice } = require('../modules/practice/entities/practice.entity');
-  const { PracticeInstruction } = require('../modules/practice/entities/practice-instruction.entity');
-  const { PracticeHint } = require('../modules/practice/entities/practice-hint.entity');
-  const { PracticeExpectedCommand } = require('../modules/practice/entities/practice-expected-command.entity');
-  const { PracticeValidationRule } = require('../modules/practice/entities/practice-validation-rule.entity');
-  const { PracticeTag } = require('../modules/practice/entities/practice-tag.entity');
+  const {
+    PracticeInstruction,
+  } = require('../modules/practice/entities/practice-instruction.entity');
+  const {
+    PracticeHint,
+  } = require('../modules/practice/entities/practice-hint.entity');
+  const {
+    PracticeExpectedCommand,
+  } = require('../modules/practice/entities/practice-expected-command.entity');
+  const {
+    PracticeValidationRule,
+  } = require('../modules/practice/entities/practice-validation-rule.entity');
+  const {
+    PracticeTag,
+  } = require('../modules/practice/entities/practice-tag.entity');
   const { Lesson } = require('../modules/lessons/lesson.entity');
   console.log('✅ All entities imported successfully');
 } catch (error) {
@@ -21,8 +31,12 @@ try {
 // Test 2: Check if we can import the services
 try {
   console.log('2️⃣ Testing service imports...');
-  const { PracticeAggregateService } = require('../modules/practice/services/practice-aggregate.service');
-  const { PracticeEntityService } = require('../modules/practice/services/practice-entity.service');
+  const {
+    PracticeAggregateService,
+  } = require('../modules/practice/services/practice-aggregate.service');
+  const {
+    PracticeEntityService,
+  } = require('../modules/practice/services/practice-entity.service');
   const { LessonService } = require('../modules/lessons/lesson.service');
   console.log('✅ All services imported successfully');
 } catch (error) {
@@ -33,9 +47,15 @@ try {
 // Test 3: Check if we can import the DTOs
 try {
   console.log('3️⃣ Testing DTO imports...');
-  const { CreatePracticeDTO } = require('../modules/practice/dto/create-practice.dto');
-  const { UpdatePracticeDTO } = require('../modules/practice/dto/update-practice.dto');
-  const { GetPracticesQueryDto } = require('../modules/practice/dto/get-practices.query.dto');
+  const {
+    CreatePracticeDTO,
+  } = require('../modules/practice/dto/create-practice.dto');
+  const {
+    UpdatePracticeDTO,
+  } = require('../modules/practice/dto/update-practice.dto');
+  const {
+    GetPracticesQueryDto,
+  } = require('../modules/practice/dto/get-practices.query.dto');
   console.log('✅ All DTOs imported successfully');
 } catch (error) {
   console.error('❌ DTO import failed:', error);
@@ -45,10 +65,15 @@ try {
 // Test 4: Check if we can import the enums
 try {
   console.log('4️⃣ Testing enum imports...');
-  const { ValidationRuleType } = require('../modules/practice/entities/practice-validation-rule.entity');
+  const {
+    ValidationRuleType,
+  } = require('../modules/practice/entities/practice-validation-rule.entity');
   const { ELessonStatus } = require('../modules/lessons/lesson.interface');
   console.log('✅ All enums imported successfully');
-  console.log('📋 Available validation rule types:', Object.values(ValidationRuleType));
+  console.log(
+    '📋 Available validation rule types:',
+    Object.values(ValidationRuleType),
+  );
   console.log('📋 Available lesson statuses:', Object.values(ELessonStatus));
 } catch (error) {
   console.error('❌ Enum import failed:', error);

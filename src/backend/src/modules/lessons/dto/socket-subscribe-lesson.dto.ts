@@ -11,4 +11,3 @@ export class UnsubscribeLessonDto {
   @IsUUID('4', { message: 'lessonId must be a valid UUID' })
   lessonId: string;
 }
-

@@ -1,6 +1,15 @@
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 // Dedicated enum for DTO validation (separate from service enums)
 enum GitObjectTypeDto {
@@ -48,7 +57,10 @@ export class CommitDto {
   @IsString()
   tree?: string;
 
-  @ApiProperty({ type: [String], example: ['ad10ca15e860dddcb6ef02682266da1a0e87e3eb'] })
+  @ApiProperty({
+    type: [String],
+    example: ['ad10ca15e860dddcb6ef02682266da1a0e87e3eb'],
+  })
   @IsArray()
   @IsString({ each: true })
   parents!: string[];
@@ -106,7 +118,10 @@ class HeadDto {
   @IsNotEmpty()
   ref!: string;
 
-  @ApiProperty({ required: false, example: '027a063fdabb5d25345df3f33ffa92ff9a33cc99' })
+  @ApiProperty({
+    required: false,
+    example: '027a063fdabb5d25345df3f33ffa92ff9a33cc99',
+  })
   @IsOptional()
   @IsString()
   commitId?: string;
@@ -156,7 +171,7 @@ export class RepositoryStateDto {
   @ApiProperty({
     required: false,
     type: () => [FileStateDto],
-    description: 'Working directory files with their statuses'
+    description: 'Working directory files with their statuses',
   })
   @IsOptional()
   @IsArray()
@@ -167,7 +182,7 @@ export class RepositoryStateDto {
   @ApiProperty({
     required: false,
     type: [String],
-    description: 'List of file paths that are currently staged'
+    description: 'List of file paths that are currently staged',
   })
   @IsOptional()
   @IsArray()
@@ -186,5 +201,3 @@ export class PracticeValidationDto {
   @Type(() => RepositoryStateDto)
   userRepositoryState!: RepositoryStateDto;
 }
-
-

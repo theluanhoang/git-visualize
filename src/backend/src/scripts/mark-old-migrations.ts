@@ -3,7 +3,7 @@ import { createDataSourceOptions } from '../config/data-source-options';
 
 async function markOldMigrations() {
   const dataSource = new DataSource(createDataSourceOptions());
-  
+
   try {
     console.log('🔄 Initializing database connection...');
     await dataSource.initialize();
@@ -21,19 +21,19 @@ async function markOldMigrations() {
     ];
 
     console.log('📝 Marking old migrations as executed...');
-    
+
     for (const migrationName of oldMigrations) {
       // Check if migration is already marked
       const existing = await dataSource.query(
         `SELECT * FROM migrations WHERE name = $1`,
-        [migrationName]
+        [migrationName],
       );
 
       if (existing.length === 0) {
         // Insert migration record
         await dataSource.query(
           `INSERT INTO migrations (timestamp, name) VALUES ($1, $2)`,
-          [parseInt(migrationName.match(/\d+/)?.[0] || '0'), migrationName]
+          [parseInt(migrationName.match(/\d+/)?.[0] || '0'), migrationName],
         );
         console.log(`   ✅ Marked ${migrationName} as executed`);
       } else {
@@ -54,16 +54,3 @@ async function markOldMigrations() {
 }
 
 void markOldMigrations();
-
-
-
-
-
-
-
-
-
-
-
-
-

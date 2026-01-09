@@ -1,5 +1,23 @@
-import { Controller, Post, Param, Body, UseGuards, UploadedFiles, UseInterceptors, Get, Patch, Delete, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  UploadedFiles,
+  UseInterceptors,
+  Get,
+  Patch,
+  Delete,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -22,25 +40,75 @@ export class AdminController {
   ) {}
 
   @Get('users')
-  @ApiOperation({ summary: 'Get all users with pagination and filtering (admin only)' })
-  @ApiResponse({ status: 200, description: 'Users retrieved successfully', type: UsersResponseDto })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
-  @ApiQuery({ name: 'search', required: false, type: String, description: 'Search term' })
-  @ApiQuery({ name: 'role', required: false, type: String, description: 'Filter by role' })
-  @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, description: 'Sort field' })
-  @ApiQuery({ name: 'sortOrder', required: false, type: String, description: 'Sort order' })
+  @ApiOperation({
+    summary: 'Get all users with pagination and filtering (admin only)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Users retrieved successfully',
+    type: UsersResponseDto,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search term',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    type: String,
+    description: 'Filter by role',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by status',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    description: 'Sort field',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    type: String,
+    description: 'Sort order',
+  })
   @ForAdmin()
-  async getAllUsers(@Query() query: GetUsersQueryDto): Promise<UsersResponseDto> {
+  async getAllUsers(
+    @Query() query: GetUsersQueryDto,
+  ): Promise<UsersResponseDto> {
     return this.userService.getUsers(query);
   }
 
   @Patch('users/:id/status')
   @ApiOperation({ summary: 'Update user status (admin only)' })
-  @ApiResponse({ status: 200, description: 'User status updated successfully', type: UserResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User status updated successfully',
+    type: UserResponseDto,
+  })
   @ForAdmin()
-  async updateUserStatus(@Param('id') id: string, @Body() body: { isActive: boolean }): Promise<UserResponseDto> {
+  async updateUserStatus(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ): Promise<UserResponseDto> {
     return this.userService.updateUserStatus(id, body.isActive);
   }
 
@@ -64,9 +132,20 @@ export class AdminController {
   async sendEmailToUser(
     @Param('id') id: string,
     @Body() dto: SendEmailDto,
-    @UploadedFiles() attachments: { originalname: string; buffer?: Buffer; mimetype?: string; path?: string }[]
+    @UploadedFiles()
+    attachments: {
+      originalname: string;
+      buffer?: Buffer;
+      mimetype?: string;
+      path?: string;
+    }[],
   ): Promise<{ message: string }> {
-    await this.adminService.sendEmailToUser(id, dto.subject, dto.message, attachments);
+    await this.adminService.sendEmailToUser(
+      id,
+      dto.subject,
+      dto.message,
+      attachments,
+    );
     return { message: 'Email sent' };
   }
 
@@ -79,7 +158,10 @@ export class AdminController {
   }
 
   @Get('analytics/metrics')
-  @ApiOperation({ summary: 'Get analytics metrics (total time spent, completion rate, average session time, engagement rate)' })
+  @ApiOperation({
+    summary:
+      'Get analytics metrics (total time spent, completion rate, average session time, engagement rate)',
+  })
   @ApiResponse({ status: 200, description: 'Analytics metrics retrieved' })
   @ForAdmin()
   async getAnalyticsMetrics() {
@@ -95,12 +177,12 @@ export class AdminController {
   }
 
   @Get('analytics/hourly-activity')
-  @ApiOperation({ summary: 'Get hourly user activity counts (by session creation hour)' })
+  @ApiOperation({
+    summary: 'Get hourly user activity counts (by session creation hour)',
+  })
   @ApiResponse({ status: 200, description: 'Hourly activity retrieved' })
   @ForAdmin()
   async getHourlyActivity(@Query('date') date?: string) {
     return this.adminService.getHourlyActivity(date);
   }
 }
-
-

@@ -9,11 +9,10 @@ async function main() {
     await dataSource.synchronize();
     // Close connection
     await dataSource.destroy();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Schema synchronized successfully.');
     process.exit(0);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('❌ Schema synchronization failed:', (err as Error).message);
     try {
       await dataSource.destroy();
@@ -23,4 +22,3 @@ async function main() {
 }
 
 void main();
-

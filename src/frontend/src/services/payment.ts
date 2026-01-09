@@ -1,40 +1,54 @@
 import api from '@/lib/api/axios';
 
-export type PaymentMethod = 'STRIPE' | 'PAYPAL' | 'VNPAY' | 'MANUAL';
-export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+export type PaymentMethod = 'CASSO' | 'MANUAL';
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'CANCELLED';
 
 export interface Payment {
   id: string;
-  subscriptionId: string;
+  userId: string;
+  subscriptionId: string | null;
   amount: number;
-  currency: string;
+  currency: string | null;
   paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
-  transactionId?: string;
-  paymentDate?: string;
-  refundAmount?: number;
-  refundDate?: string;
-  refundReason?: string;
+  status: PaymentStatus;
+  transactionId?: string | null;
+  description?: string | null;
+  paymentDate?: string | null;
+  paymentUrl?: string | null;
+  qrCode?: string | null;
+  bankAccount?: string | null;
+  bankName?: string | null;
   createdAt: string;
   updatedAt: string;
-  paymentUrl?: string; // Added by backend when creating payment
 }
 
 export interface CreatePaymentDto {
   subscriptionId: string;
-  amount: number;
-  currency?: string;
-  paymentMethod: PaymentMethod;
-  transactionId?: string;
+}
+
+export interface CreateSubscriptionWithPaymentDto {
+  planType: 'MONTHLY' | 'YEARLY';
+  autoRenew?: boolean;
 }
 
 export interface VerifyPaymentDto {
   transactionId: string;
 }
 
+
 export const PaymentsService = {
   async create(data: CreatePaymentDto): Promise<Payment> {
     const response = await api.post<Payment>('/api/v1/subscription/payment', data);
+    return response.data;
+  },
+
+  async createSubscriptionWithPayment(data: CreateSubscriptionWithPaymentDto): Promise<Payment> {
+    const response = await api.post<Payment>('/api/v1/subscription/payment/create-subscription', data);
+    return response.data;
+  },
+
+  async getById(paymentId: string): Promise<Payment> {
+    const response = await api.get<Payment>(`/api/v1/subscription/payment/${paymentId}`);
     return response.data;
   },
 
@@ -49,4 +63,5 @@ export const PaymentsService = {
     const response = await api.get<Payment[]>('/api/v1/subscription/payment/my');
     return response.data;
   },
+
 };
