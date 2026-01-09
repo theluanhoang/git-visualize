@@ -42,15 +42,22 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
     enabled: !!lessonSlug, // Only load when lessonSlug is available
   });
 
+  const practices = useMemo(() => (
+    Array.isArray(practicesData) ? practicesData : (practicesData as { data: Practice[] })?.data || []
+  ), [practicesData]);
+
+  const selectedPracticeFromList = useMemo(() => {
+    if (!selectedPracticeId) return null;
+    return practices.find((p: Practice) => p.id === selectedPracticeId) || null;
+  }, [selectedPracticeId, practices]);
+
   // Load practice with relations only when selected for details view
   const { data: selectedPracticeWithRelations, isLoading: isLoadingDetails } = usePractice(
     selectedPracticeId || '',
     { enabled: !!selectedPracticeId }
   );
 
-  const practices = useMemo(() => (
-    Array.isArray(practicesData) ? practicesData : (practicesData as { data: Practice[] })?.data || []
-  ), [practicesData]);
+  const displayPractice = selectedPracticeWithRelations || selectedPracticeFromList;
   const totalItems = (practicesData as { total?: number })?.total ?? practices.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const displayedPractices = useMemo(() => practices.filter((practice: Practice) =>
@@ -288,19 +295,27 @@ export default function PracticeSelector({ onStartPractice, lessonSlug, lessonTi
             
             {/* Scrollable content */}
             <div className="overflow-y-auto flex-1 p-4 md:p-6">
-              {isLoadingDetails ? (
+              {isLoadingDetails && !selectedPracticeFromList ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-              ) : selectedPracticeWithRelations ? (
-                <PracticeDetails
-                  practice={selectedPracticeWithRelations}
-                  onStartPractice={() => {
-                    if (selectedPracticeWithRelations) {
-                      handleStartPractice(selectedPracticeWithRelations);
-                    }
-                  }}
-                />
+              ) : displayPractice ? (
+                <div className="relative">
+                  {/* Show loading overlay only when loading additional relations */}
+                  {isLoadingDetails && selectedPracticeFromList && (
+                    <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    </div>
+                  )}
+                  <PracticeDetails
+                    practice={displayPractice}
+                    onStartPractice={() => {
+                      if (displayPractice) {
+                        handleStartPractice(displayPractice);
+                      }
+                    }}
+                  />
+                </div>
               ) : null}
             </div>
           </div>

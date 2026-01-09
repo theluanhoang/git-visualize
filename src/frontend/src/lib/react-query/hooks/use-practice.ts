@@ -15,11 +15,15 @@ export const usePractices = (params?: {
   includeRelations?: boolean;
   isActive?: boolean;
   publishedOnly?: boolean;
+  enabled?: boolean;
 }) => {
+  const { enabled = true, ...queryParams } = params || {};
   return useQuery({
-    queryKey: practiceKeys.list(params),
-    queryFn: () => PracticesService.getAll(params),
-    // Same pattern as useQuizzes - no enabled flag, no staleTime override
+    queryKey: practiceKeys.list(queryParams),
+    queryFn: () => PracticesService.getAll(queryParams),
+    enabled,
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   });
 };
 
@@ -28,6 +32,8 @@ export const usePractice = (id: string, options?: { enabled?: boolean }) => {
     queryKey: practiceKeys.detail(id),
     queryFn: () => PracticesService.getById(id),
     enabled: !!id && (options?.enabled !== false),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 };
 
