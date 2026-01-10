@@ -23,7 +23,7 @@ const roleOptions = [
 ];
 
 const statusOptions = [
-  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'active', label: 'Tất cả trạng thái' },
   { value: 'active', label: 'Hoạt động' },
   { value: 'inactive', label: 'Không hoạt động' },
   { value: 'banned', label: 'Bị cấm' }
